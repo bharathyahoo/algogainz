@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import DashboardPage from './pages/DashboardPage';
 import WatchlistPage from './pages/WatchlistPage';
+import HoldingsPage from './pages/HoldingsPage';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -57,6 +58,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <WatchlistPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/holdings"
+              element={
+                <ProtectedRoute>
+                  <HoldingsPage />
                 </ProtectedRoute>
               }
             />
