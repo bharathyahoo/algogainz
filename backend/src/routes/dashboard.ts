@@ -142,6 +142,8 @@ function calculatePortfolioMetrics(transactions: any[], holdings: any[]) {
 
   // Top and worst performers
   const stockPerformance = calculateStockPerformance(transactions, holdings);
+  console.log('Stock Performance Data:', JSON.stringify(stockPerformance, null, 2));
+
   const topPerformers = stockPerformance
     .filter((s) => s.totalPnL > 0)
     .sort((a, b) => b.totalPnL - a.totalPnL)
@@ -151,6 +153,9 @@ function calculatePortfolioMetrics(transactions: any[], holdings: any[]) {
     .filter((s) => s.totalPnL < 0)
     .sort((a, b) => a.totalPnL - b.totalPnL)
     .slice(0, 5);
+
+  console.log('Top Performers:', topPerformers);
+  console.log('Worst Performers:', worstPerformers);
 
   return {
     totalInvested,
@@ -296,6 +301,9 @@ function calculateCompletedTrades(transactions: any[]): any[] {
 function calculateStockPerformance(transactions: any[], holdings: any[]): any[] {
   const stockMap: { [symbol: string]: any } = {};
 
+  console.log('calculateStockPerformance - Input transactions count:', transactions.length);
+  console.log('calculateStockPerformance - Input holdings count:', holdings.length);
+
   // Initialize with transactions
   transactions.forEach((t) => {
     if (!stockMap[t.stockSymbol]) {
@@ -308,6 +316,8 @@ function calculateStockPerformance(transactions: any[], holdings: any[]): any[] 
     }
   });
 
+  console.log('Stock Map after transactions:', Object.keys(stockMap));
+
   // Add holdings unrealized P&L
   holdings.forEach((h) => {
     if (stockMap[h.stockSymbol]) {
@@ -319,6 +329,7 @@ function calculateStockPerformance(transactions: any[], holdings: any[]): any[] 
   Object.keys(stockMap).forEach((symbol) => {
     const stockTxns = transactions.filter((t) => t.stockSymbol === symbol);
     const realizedPnL = calculateRealizedPnLForStock(stockTxns);
+    console.log(`Stock ${symbol}: Realized P&L = ${realizedPnL}, Unrealized P&L = ${stockMap[symbol].unrealizedPnL}`);
     stockMap[symbol].realizedPnL = realizedPnL;
     stockMap[symbol].totalPnL = realizedPnL + stockMap[symbol].unrealizedPnL;
   });
