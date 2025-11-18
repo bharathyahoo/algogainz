@@ -18,7 +18,7 @@ import {
   Autocomplete,
   CircularProgress,
 } from '@mui/material';
-import { Add, FilterList } from '@mui/icons-material';
+import { Add, FilterList, Delete } from '@mui/icons-material';
 import { useAppDispatch, useAppSelector } from '../hooks/useRedux';
 import {
   setWatchlist,
@@ -44,9 +44,11 @@ const WatchlistPage: React.FC = () => {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<WatchlistStock | null>(null);
   const [selectedStockForAdd, setSelectedStockForAdd] = useState<StockSearchResult | null>(null);
   const [stockCategories, setStockCategories] = useState<string[]>([]);
+  const [operationLoading, setOperationLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -120,6 +122,7 @@ const WatchlistPage: React.FC = () => {
   const handleConfirmAdd = async () => {
     if (!selectedStockForAdd) return;
 
+    setOperationLoading(true);
     try {
       const newStock = await watchlistService.addStock({
         stockSymbol: selectedStockForAdd.tradingsymbol,
@@ -137,17 +140,31 @@ const WatchlistPage: React.FC = () => {
       setStockCategories([]);
     } catch (error: any) {
       showSnackbar(error.message || 'Failed to add stock', 'error');
+    } finally {
+      setOperationLoading(false);
     }
   };
 
-  const handleRemoveStock = async (id: string) => {
+  const handleRemoveClick = (stock: WatchlistStock) => {
+    setSelectedStock(stock);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedStock) return;
+
+    setOperationLoading(true);
     try {
-      await watchlistService.removeStock(id);
-      dispatch(removeStock(id));
+      await watchlistService.removeStock(selectedStock.id);
+      dispatch(removeStock(selectedStock.id));
       loadCategories(); // Refresh categories
       showSnackbar('Stock removed from watchlist', 'success');
+      setDeleteDialogOpen(false);
+      setSelectedStock(null);
     } catch (error: any) {
       showSnackbar(error.message || 'Failed to remove stock', 'error');
+    } finally {
+      setOperationLoading(false);
     }
   };
 
@@ -160,6 +177,7 @@ const WatchlistPage: React.FC = () => {
   const handleConfirmEdit = async () => {
     if (!selectedStock) return;
 
+    setOperationLoading(true);
     try {
       const updated = await watchlistService.updateStock(selectedStock.id, {
         categories: stockCategories,
@@ -173,6 +191,8 @@ const WatchlistPage: React.FC = () => {
       setStockCategories([]);
     } catch (error: any) {
       showSnackbar(error.message || 'Failed to update stock', 'error');
+    } finally {
+      setOperationLoading(false);
     }
   };
 
@@ -257,7 +277,7 @@ const WatchlistPage: React.FC = () => {
             <Grid item xs={12} sm={6} md={4} lg={3} key={stock.id}>
               <StockCard
                 stock={stock}
-                onRemove={handleRemoveStock}
+                onRemove={() => handleRemoveClick(stock)}
                 onEdit={handleEditStock}
               />
             </Grid>
@@ -324,9 +344,10 @@ const WatchlistPage: React.FC = () => {
           <Button
             onClick={handleConfirmAdd}
             variant="contained"
-            disabled={!selectedStockForAdd}
+            disabled={!selectedStockForAdd || operationLoading}
+            startIcon={operationLoading ? <CircularProgress size={20} /> : null}
           >
-            Add to Watchlist
+            {operationLoading ? 'Adding...' : 'Add to Watchlist'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -380,8 +401,55 @@ const WatchlistPage: React.FC = () => {
           >
             Cancel
           </Button>
-          <Button onClick={handleConfirmEdit} variant="contained">
-            Save Changes
+          <Button
+            onClick={handleConfirmEdit}
+            variant="contained"
+            disabled={operationLoading}
+            startIcon={operationLoading ? <CircularProgress size={20} /> : null}
+          >
+            {operationLoading ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => {
+          if (!operationLoading) {
+            setDeleteDialogOpen(false);
+            setSelectedStock(null);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Remove Stock from Watchlist?</DialogTitle>
+        <DialogContent>
+          {selectedStock && (
+            <Typography>
+              Are you sure you want to remove <strong>{selectedStock.stockSymbol}</strong> ({selectedStock.companyName}) from your watchlist?
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setDeleteDialogOpen(false);
+              setSelectedStock(null);
+            }}
+            disabled={operationLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            color="error"
+            disabled={operationLoading}
+            startIcon={operationLoading ? <CircularProgress size={20} /> : <Delete />}
+          >
+            {operationLoading ? 'Removing...' : 'Remove'}
           </Button>
         </DialogActions>
       </Dialog>
