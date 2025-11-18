@@ -8,6 +8,8 @@ dotenv.config();
 
 // Import routes
 import authRoutes from './routes/auth';
+import watchlistRoutes from './routes/watchlist';
+import instrumentsRoutes from './routes/instruments';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -29,7 +31,8 @@ app.get('/health', (req: Request, res: Response) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-// app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/instruments', instrumentsRoutes);
 // app.use('/api/trading', tradingRoutes);
 // app.use('/api/transactions', transactionsRoutes);
 // app.use('/api/holdings', holdingsRoutes);
