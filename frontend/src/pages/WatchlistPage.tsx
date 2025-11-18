@@ -18,7 +18,8 @@ import {
   Autocomplete,
   CircularProgress,
 } from '@mui/material';
-import { Add, FilterList, Delete } from '@mui/icons-material';
+import { Add, FilterList, Delete, Receipt } from '@mui/icons-material';
+import { Fab, Tooltip } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../hooks/useRedux';
 import {
   setWatchlist,
@@ -38,6 +39,7 @@ import StockCard from '../components/watchlist/StockCard';
 import RecommendationCard from '../components/analysis/RecommendationCard';
 import TechnicalIndicatorsPanel from '../components/analysis/TechnicalIndicatorsPanel';
 import OrderDialog from '../components/trading/OrderDialog';
+import ManualTransactionDialog from '../components/transactions/ManualTransactionDialog';
 import type { WatchlistStock } from '../types';
 
 const WatchlistPage: React.FC = () => {
@@ -51,6 +53,7 @@ const WatchlistPage: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [manualTransactionDialogOpen, setManualTransactionDialogOpen] = useState(false);
   const [orderType, setOrderType] = useState<'BUY' | 'SELL'>('BUY');
   const [selectedStock, setSelectedStock] = useState<WatchlistStock | null>(null);
   const [selectedStockForAdd, setSelectedStockForAdd] = useState<StockSearchResult | null>(null);
@@ -612,6 +615,37 @@ const WatchlistPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Manual Transaction Dialog */}
+      <ManualTransactionDialog
+        open={manualTransactionDialogOpen}
+        onClose={() => setManualTransactionDialogOpen(false)}
+        onSuccess={() => {
+          setSnackbar({
+            open: true,
+            message: 'Transaction recorded successfully!',
+            severity: 'success',
+          });
+          setManualTransactionDialogOpen(false);
+        }}
+        stockOptions={stocks.map(s => ({ symbol: s.stockSymbol, name: s.companyName }))}
+      />
+
+      {/* Floating Action Button */}
+      <Tooltip title="Record Manual Transaction" placement="left">
+        <Fab
+          color="primary"
+          aria-label="record transaction"
+          onClick={() => setManualTransactionDialogOpen(true)}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+          }}
+        >
+          <Receipt />
+        </Fab>
+      </Tooltip>
     </Container>
   );
 };

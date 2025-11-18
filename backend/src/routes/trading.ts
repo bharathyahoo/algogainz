@@ -5,6 +5,23 @@ import { tradingService, type OrderRequest } from '../services/tradingService';
 const router = express.Router();
 
 /**
+ * GET /api/trading/market-status
+ * Check if market is currently open
+ */
+router.get('/market-status', (req, res) => {
+  const isOpen = tradingService.isMarketOpen();
+  res.json({
+    success: true,
+    data: {
+      isOpen,
+      message: isOpen
+        ? 'Market is open (9:15 AM - 3:30 PM IST, Mon-Fri)'
+        : 'Market is closed. Use LIMIT orders for After Market Orders (AMO).',
+    },
+  });
+});
+
+/**
  * POST /api/trading/preview
  * Get order preview with charges
  */

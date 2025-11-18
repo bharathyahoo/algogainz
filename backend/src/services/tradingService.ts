@@ -3,6 +3,32 @@ import { createKiteService } from './kiteService';
 
 const prisma = new PrismaClient();
 
+/**
+ * Check if market is currently open (IST timezone)
+ */
+function isMarketOpen(): boolean {
+  // Get current time in IST (UTC+5:30)
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds
+  const istTime = new Date(now.getTime() + istOffset);
+
+  const day = istTime.getUTCDay(); // 0 = Sunday, 6 = Saturday
+  const hours = istTime.getUTCHours();
+  const minutes = istTime.getUTCMinutes();
+  const totalMinutes = hours * 60 + minutes;
+
+  // Market is closed on Saturday (6) and Sunday (0)
+  if (day === 0 || day === 6) {
+    return false;
+  }
+
+  // Market hours: 9:15 AM (555 minutes) to 3:30 PM (930 minutes) IST
+  const marketOpen = 9 * 60 + 15; // 9:15 AM
+  const marketClose = 15 * 60 + 30; // 3:30 PM
+
+  return totalMinutes >= marketOpen && totalMinutes <= marketClose;
+}
+
 export interface OrderRequest {
   stockSymbol: string;
   companyName: string;
@@ -32,6 +58,13 @@ export interface OrderPreview {
 }
 
 export class TradingService {
+  /**
+   * Check if market is currently open
+   */
+  isMarketOpen(): boolean {
+    return isMarketOpen();
+  }
+
   /**
    * Calculate order charges (approximate)
    * These are indicative charges - actual charges will come from Kite
@@ -108,7 +141,19 @@ export class TradingService {
       const kite = createKiteService(accessToken);
       const margins = await kite.getMargins('equity');
 
-      const available = margins.equity?.available?.cash || 0;
+      // Log the full response to debug
+      console.log('Margins API Response:', JSON.stringify(margins, null, 2));
+
+      // Try different possible paths in the response
+      const available =
+        margins.equity?.available?.cash ||
+        margins.available?.cash ||
+        margins.cash ||
+        0;
+
+      console.log('Available margin extracted:', available);
+      console.log('Required amount:', requiredAmount);
+
       const sufficient = available >= requiredAmount;
 
       return {
@@ -149,6 +194,15 @@ export class TradingService {
       orderType: orderRequest.orderType,
     });
 
+    // Check market hours for MARKET orders
+    const marketOpen = isMarketOpen();
+    if (!marketOpen && orderRequest.orderType === 'MARKET') {
+      throw new Error(
+        'Market is currently closed. MARKET orders can only be placed during market hours (9:15 AM - 3:30 PM IST, Mon-Fri). ' +
+        'Please use a LIMIT order instead, which will be queued as an After Market Order (AMO).'
+      );
+    }
+
     // Build Kite order params
     const orderParams: any = {
       tradingsymbol: orderRequest.stockSymbol,
@@ -166,7 +220,20 @@ export class TradingService {
     }
 
     // Place order via Kite API
-    const kiteResponse = await kite.placeOrder(orderParams);
+    let kiteResponse;
+    try {
+      kiteResponse = await kite.placeOrder(orderParams);
+    } catch (error: any) {
+      // Handle specific Kite API errors with better messages
+      if (error.message && error.message.includes('After Market Order')) {
+        throw new Error(
+          'Market is currently closed. MARKET orders cannot be placed outside market hours. ' +
+          'Please use a LIMIT order instead, which will be queued as an After Market Order (AMO).'
+        );
+      }
+      // Re-throw other errors
+      throw error;
+    }
 
     // Save order to database
     const order = await prisma.order.create({

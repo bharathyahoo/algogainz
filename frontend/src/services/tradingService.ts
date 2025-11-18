@@ -46,7 +46,25 @@ export interface Order {
   placedAt: string;
 }
 
+export interface MarketStatus {
+  isOpen: boolean;
+  message: string;
+}
+
 class TradingService {
+  /**
+   * Check if market is currently open
+   */
+  async getMarketStatus(): Promise<MarketStatus> {
+    try {
+      const response = await apiService.get('/trading/market-status');
+      return response.data as MarketStatus;
+    } catch (error: any) {
+      console.error('Failed to get market status:', error);
+      throw new Error(error.message || 'Failed to get market status');
+    }
+  }
+
   /**
    * Get order preview with charges
    */
