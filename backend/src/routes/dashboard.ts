@@ -345,6 +345,24 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
     new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
+  console.log(`calculateRealizedPnLForStock - Buys: ${buys.length}, Sells: ${sells.length}`);
+
+  if (buys.length > 0) {
+    console.log('First Buy:', {
+      qty: buys[0].quantity,
+      netAmount: buys[0].netAmount,
+      pricePerShare: buys[0].pricePerShare
+    });
+  }
+
+  if (sells.length > 0) {
+    console.log('First Sell:', {
+      qty: sells[0].quantity,
+      netAmount: sells[0].netAmount,
+      pricePerShare: sells[0].pricePerShare
+    });
+  }
+
   let buyQueue = [...buys];
   let totalPnL = 0;
 
@@ -364,6 +382,8 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
       const sellProceeds = (Math.abs(sell.netAmount) / sell.quantity) * matchQty;
       const pnl = sellProceeds - buyCost;
 
+      console.log(`Match: ${matchQty} shares, BuyCost: ${buyCost}, SellProceeds: ${sellProceeds}, P&L: ${pnl}`);
+
       totalPnL += pnl;
 
       buy.remainingQty -= matchQty;
@@ -375,6 +395,7 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
     }
   });
 
+  console.log(`Total P&L for stock: ${totalPnL}`);
   return totalPnL;
 }
 
