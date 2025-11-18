@@ -68,13 +68,15 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatCurrency = (value: number | null | undefined) => {
+    const safeValue = value ?? 0;
+    return `₹${safeValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const formatPercent = (value: number) => {
-    const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(2)}%`;
+  const formatPercent = (value: number | null | undefined) => {
+    const safeValue = value ?? 0;
+    const sign = safeValue >= 0 ? '+' : '';
+    return `${sign}${safeValue.toFixed(2)}%`;
   };
 
   return (
@@ -159,11 +161,11 @@ const DashboardPage: React.FC = () => {
                 <Paper
                   sx={{
                     p: 2.5,
-                    bgcolor: metrics.totalPnL >= 0 ? 'success.50' : 'error.50',
+                    bgcolor: (metrics.totalPnL ?? 0) >= 0 ? 'success.50' : 'error.50',
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    {metrics.totalPnL >= 0 ? (
+                    {(metrics.totalPnL ?? 0) >= 0 ? (
                       <TrendingUp sx={{ color: 'success.main', mr: 1 }} />
                     ) : (
                       <TrendingDown sx={{ color: 'error.main', mr: 1 }} />
@@ -176,7 +178,7 @@ const DashboardPage: React.FC = () => {
                     variant="h5"
                     sx={{
                       fontWeight: 700,
-                      color: metrics.totalPnL >= 0 ? 'success.main' : 'error.main',
+                      color: (metrics.totalPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
                     }}
                   >
                     {formatCurrency(metrics.totalPnL)}
@@ -186,7 +188,7 @@ const DashboardPage: React.FC = () => {
                     sx={{
                       mt: 0.5,
                       fontWeight: 600,
-                      color: metrics.totalPnL >= 0 ? 'success.main' : 'error.main',
+                      color: (metrics.totalPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
                     }}
                   >
                     {formatPercent(metrics.returnPercent)}
@@ -204,10 +206,10 @@ const DashboardPage: React.FC = () => {
                     </Typography>
                   </Box>
                   <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                    {metrics.winRate.toFixed(1)}%
+                    {(metrics.winRate ?? 0).toFixed(1)}%
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {metrics.totalTrades} total trades
+                    {metrics.totalTrades ?? 0} total trades
                   </Typography>
                 </Paper>
               </Grid>
@@ -222,7 +224,7 @@ const DashboardPage: React.FC = () => {
                     variant="h6"
                     sx={{
                       fontWeight: 700,
-                      color: metrics.realizedPnL >= 0 ? 'success.main' : 'error.main',
+                      color: (metrics.realizedPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
                     }}
                   >
                     {formatCurrency(metrics.realizedPnL)}
@@ -240,7 +242,7 @@ const DashboardPage: React.FC = () => {
                     variant="h6"
                     sx={{
                       fontWeight: 700,
-                      color: metrics.unrealizedPnL >= 0 ? 'success.main' : 'error.main',
+                      color: (metrics.unrealizedPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
                     }}
                   >
                     {formatCurrency(metrics.unrealizedPnL)}
@@ -258,7 +260,7 @@ const DashboardPage: React.FC = () => {
                     variant="h6"
                     sx={{
                       fontWeight: 700,
-                      color: metrics.avgProfitPerTrade >= 0 ? 'success.main' : 'error.main',
+                      color: (metrics.avgProfitPerTrade ?? 0) >= 0 ? 'success.main' : 'error.main',
                     }}
                   >
                     {formatCurrency(metrics.avgProfitPerTrade)}
@@ -276,14 +278,14 @@ const DashboardPage: React.FC = () => {
 
               {/* Win/Loss Chart */}
               <Grid item xs={12} lg={4}>
-                <WinLossChart totalTrades={metrics.totalTrades} winRate={metrics.winRate} />
+                <WinLossChart totalTrades={metrics.totalTrades ?? 0} winRate={metrics.winRate ?? 0} />
               </Grid>
 
               {/* Performers */}
               <Grid item xs={12}>
                 <PerformersCard
-                  topPerformers={metrics.topPerformers}
-                  worstPerformers={metrics.worstPerformers}
+                  topPerformers={metrics.topPerformers ?? []}
+                  worstPerformers={metrics.worstPerformers ?? []}
                 />
               </Grid>
             </Grid>
