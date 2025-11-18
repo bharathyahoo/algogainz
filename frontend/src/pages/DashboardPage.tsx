@@ -3,16 +3,12 @@ import {
   Box,
   Container,
   Typography,
-  AppBar,
-  Toolbar,
-  Button,
   Paper,
   Grid,
   CircularProgress,
   Alert,
 } from '@mui/material';
 import {
-  Logout,
   TrendingUp,
   AccountBalance,
   ShowChart,
@@ -20,9 +16,7 @@ import {
   AttachMoney,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAppSelector, useAppDispatch } from '../hooks/useRedux';
-import { logout } from '../store/authSlice';
-import { authService } from '../services/authService';
+import { useAppSelector } from '../hooks/useRedux';
 import dashboardService, { type DashboardMetrics } from '../services/dashboardService';
 import PnLTrendChart from '../components/dashboard/PnLTrendChart';
 import WinLossChart from '../components/dashboard/WinLossChart';
@@ -30,7 +24,6 @@ import PerformersCard from '../components/dashboard/PerformersCard';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -55,19 +48,6 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await authService.logout();
-      dispatch(logout());
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Force logout even if API call fails
-      dispatch(logout());
-      navigate('/login');
-    }
-  };
-
   const formatCurrency = (value: number | null | undefined) => {
     const safeValue = value ?? 0;
     return `₹${safeValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -80,39 +60,17 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* App Bar */}
-      <AppBar position="static" elevation={0}>
-        <Toolbar>
-          <TrendingUp sx={{ mr: 2 }} />
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            AlgoGainz
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box>
+          <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+            Portfolio Dashboard
           </Typography>
-          <Typography variant="body2" sx={{ mr: 2 }}>
-            Welcome, {user?.userName || 'User'}!
+          <Typography variant="body2" color="text.secondary">
+            Welcome back, {user?.userName || 'User'}!
           </Typography>
-          <Button
-            color="inherit"
-            startIcon={<Logout />}
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
-        </Toolbar>
-      </AppBar>
-
-      {/* Content */}
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box>
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-              Portfolio Dashboard
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Welcome back, {user?.userName || 'User'}!
-            </Typography>
-          </Box>
         </Box>
+      </Box>
 
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -386,8 +344,7 @@ const DashboardPage: React.FC = () => {
             </Grid>
           </>
         ) : null}
-      </Container>
-    </Box>
+    </Container>
   );
 };
 

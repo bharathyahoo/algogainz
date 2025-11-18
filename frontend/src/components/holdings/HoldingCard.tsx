@@ -37,7 +37,7 @@ const HoldingCard: React.FC<HoldingCardProps> = ({ holding, onSetExitStrategy, o
   const hasDayChange = holding.dayChange !== null && holding.dayChange !== undefined;
   const dayChangeIsPositive = (holding.dayChange || 0) >= 0;
 
-  const handleViewTransactions = (e: React.MouseEvent) => {
+  const handleViewTransactions = () => {
     // Navigate to transactions page with pre-filtered symbol
     navigate(`/transactions?symbol=${holding.stockSymbol}`);
   };
