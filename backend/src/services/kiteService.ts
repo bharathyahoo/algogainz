@@ -173,15 +173,23 @@ export class KiteService {
    * POST /orders/regular
    */
   async placeOrder(order: KiteOrder) {
-    const response = await this.client.post('/orders/regular', {
-      tradingsymbol: order.tradingsymbol,
-      exchange: order.exchange,
-      transaction_type: order.transaction_type,
-      quantity: order.quantity,
-      order_type: order.order_type,
-      price: order.price,
-      product: order.product,
-      validity: order.validity || 'DAY'
+    // Kite API expects form-urlencoded data
+    const params = new URLSearchParams();
+    params.append('tradingsymbol', order.tradingsymbol);
+    params.append('exchange', order.exchange);
+    params.append('transaction_type', order.transaction_type);
+    params.append('quantity', order.quantity.toString());
+    params.append('order_type', order.order_type);
+    if (order.price) {
+      params.append('price', order.price.toString());
+    }
+    params.append('product', order.product);
+    params.append('validity', order.validity || 'DAY');
+
+    const response = await this.client.post('/orders/regular', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
     });
 
     return response.data.data;
@@ -192,7 +200,18 @@ export class KiteService {
    * PUT /orders/regular/{order_id}
    */
   async modifyOrder(orderId: string, modifications: Partial<KiteOrder>) {
-    const response = await this.client.put(`/orders/regular/${orderId}`, modifications);
+    // Kite API expects form-urlencoded data
+    const params = new URLSearchParams();
+    if (modifications.quantity) params.append('quantity', modifications.quantity.toString());
+    if (modifications.price) params.append('price', modifications.price.toString());
+    if (modifications.order_type) params.append('order_type', modifications.order_type);
+    if (modifications.validity) params.append('validity', modifications.validity);
+
+    const response = await this.client.put(`/orders/regular/${orderId}`, params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
     return response.data.data;
   }
 
