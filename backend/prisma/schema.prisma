@@ -1,0 +1,155 @@
+// Prisma schema for AlgoGainz
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores Zerodha Kite authentication data
+model User {
+  id             String   @id @default(uuid())
+  kiteUserId     String   @unique @map("kite_user_id")
+  accessToken    String?  @map("access_token")
+  apiKey         String   @map("api_key")
+  apiSecret      String   @map("api_secret")
+  email          String?  @unique
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  watchlist      Watchlist[]
+  transactions   Transaction[]
+  holdings       Holding[]
+
+  @@map("users")
+}
+
+// Watchlist model - stocks user is monitoring
+model Watchlist {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  stockSymbol   String   @map("stock_symbol")
+  companyName   String   @map("company_name")
+  exchange      String   @default("NSE") // NSE or BSE
+  instrumentToken String @map("instrument_token")
+  categories    String[] // Array of category names
+  sortOrder     Int      @default(0) @map("sort_order") // For drag-and-drop ordering
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, stockSymbol])
+  @@index([userId])
+  @@map("watchlist")
+}
+
+// Transaction model - all buy/sell transactions
+model Transaction {
+  id                  String   @id @default(uuid())
+  userId              String   @map("user_id")
+  stockSymbol         String   @map("stock_symbol")
+  companyName         String   @map("company_name")
+  type                String   // BUY or SELL
+  quantity            Int
+  pricePerShare       Float    @map("price_per_share")
+  grossAmount         Float    @map("gross_amount") // Price × Quantity
+
+  // Charges breakdown
+  brokerage           Float    @default(0)
+  exchangeCharges     Float    @default(0) @map("exchange_charges")
+  gst                 Float    @default(0)
+  sebiCharges         Float    @default(0) @map("sebi_charges")
+  stampDuty           Float    @default(0) @map("stamp_duty")
+  totalCharges        Float    @map("total_charges")
+  netAmount           Float    @map("net_amount") // Gross ± Charges
+
+  // Metadata
+  source              String   @default("APP_EXECUTED") // APP_EXECUTED or MANUALLY_RECORDED
+  orderIdRef          String?  @map("order_id_ref") // Kite order ID if available
+  timestamp           DateTime @default(now())
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stockSymbol])
+  @@index([userId, stockSymbol])
+  @@index([timestamp])
+  @@map("transactions")
+}
+
+// Holdings model - current positions (calculated from transactions)
+model Holding {
+  id                  String   @id @default(uuid())
+  userId              String   @map("user_id")
+  stockSymbol         String   @map("stock_symbol")
+  companyName         String   @map("company_name")
+  quantity            Int      // Total quantity held
+  avgBuyPrice         Float    @map("avg_buy_price")
+  totalInvested       Float    @map("total_invested")
+
+  // Real-time data (updated via WebSocket)
+  currentPrice        Float?   @map("current_price")
+  currentValue        Float?   @map("current_value")
+  unrealizedPnL       Float?   @map("unrealized_pnl")
+  unrealizedPnLPct    Float?   @map("unrealized_pnl_pct")
+  dayChange           Float?   @map("day_change")
+  dayChangePct        Float?   @map("day_change_pct")
+
+  // Metadata
+  lastUpdated         DateTime @default(now()) @map("last_updated")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exitStrategy        ExitStrategy?
+
+  @@unique([userId, stockSymbol])
+  @@index([userId])
+  @@map("holdings")
+}
+
+// Exit Strategy model - profit targets and stop loss
+model ExitStrategy {
+  id                  String   @id @default(uuid())
+  holdingId           String   @unique @map("holding_id")
+
+  // Exit parameters
+  profitTargetPct     Float?   @map("profit_target_pct") // e.g., 10.0 for 10%
+  profitTargetPrice   Float?   @map("profit_target_price") // Calculated target price
+  stopLossPct         Float?   @map("stop_loss_pct") // e.g., 3.0 for 3%
+  stopLossPrice       Float?   @map("stop_loss_price") // Calculated stop loss price
+
+  // Alert settings
+  alertEnabled        Boolean  @default(true) @map("alert_enabled")
+  profitAlertTriggered Boolean @default(false) @map("profit_alert_triggered")
+  stopLossAlertTriggered Boolean @default(false) @map("stop_loss_alert_triggered")
+
+  // Metadata
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  holding             Holding  @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+
+  @@map("exit_strategies")
+}
+
+// Category model - user-defined watchlist categories (optional, can also use string array)
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  color       String?  // Hex color code for UI
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("categories")
+}
