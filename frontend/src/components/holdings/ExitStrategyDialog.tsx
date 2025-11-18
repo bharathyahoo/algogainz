@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -126,13 +126,20 @@ const ExitStrategyDialog: React.FC<ExitStrategyDialogProps> = ({
 
   if (!holding) return null;
 
-  const profitTargetPrice = profitTargetPct
-    ? holdingsService.calculateProfitTargetPrice(holding.avgBuyPrice, parseFloat(profitTargetPct))
-    : null;
+  // Calculate target prices whenever percentages change
+  const profitTargetPrice = useMemo(() => {
+    if (!profitTargetPct || profitTargetPct.trim() === '') return null;
+    const pct = parseFloat(profitTargetPct);
+    if (isNaN(pct) || pct <= 0) return null;
+    return holdingsService.calculateProfitTargetPrice(holding.avgBuyPrice, pct);
+  }, [profitTargetPct, holding.avgBuyPrice]);
 
-  const stopLossPrice = stopLossPct
-    ? holdingsService.calculateStopLossPrice(holding.avgBuyPrice, parseFloat(stopLossPct))
-    : null;
+  const stopLossPrice = useMemo(() => {
+    if (!stopLossPct || stopLossPct.trim() === '') return null;
+    const pct = parseFloat(stopLossPct);
+    if (isNaN(pct) || pct <= 0) return null;
+    return holdingsService.calculateStopLossPrice(holding.avgBuyPrice, pct);
+  }, [stopLossPct, holding.avgBuyPrice]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
