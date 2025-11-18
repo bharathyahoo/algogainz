@@ -142,7 +142,6 @@ function calculatePortfolioMetrics(transactions: any[], holdings: any[]) {
 
   // Top and worst performers
   const stockPerformance = calculateStockPerformance(transactions, holdings);
-  console.log('Stock Performance Data:', JSON.stringify(stockPerformance, null, 2));
 
   const topPerformers = stockPerformance
     .filter((s) => s.totalPnL > 0)
@@ -153,9 +152,6 @@ function calculatePortfolioMetrics(transactions: any[], holdings: any[]) {
     .filter((s) => s.totalPnL < 0)
     .sort((a, b) => a.totalPnL - b.totalPnL)
     .slice(0, 5);
-
-  console.log('Top Performers:', topPerformers);
-  console.log('Worst Performers:', worstPerformers);
 
   return {
     totalInvested,
@@ -305,9 +301,6 @@ function calculateCompletedTrades(transactions: any[]): any[] {
 function calculateStockPerformance(transactions: any[], holdings: any[]): any[] {
   const stockMap: { [symbol: string]: any } = {};
 
-  console.log('calculateStockPerformance - Input transactions count:', transactions.length);
-  console.log('calculateStockPerformance - Input holdings count:', holdings.length);
-
   // Initialize with transactions
   transactions.forEach((t) => {
     if (!stockMap[t.stockSymbol]) {
@@ -320,8 +313,6 @@ function calculateStockPerformance(transactions: any[], holdings: any[]): any[] 
     }
   });
 
-  console.log('Stock Map after transactions:', Object.keys(stockMap));
-
   // Add holdings unrealized P&L
   holdings.forEach((h) => {
     if (stockMap[h.stockSymbol]) {
@@ -333,7 +324,6 @@ function calculateStockPerformance(transactions: any[], holdings: any[]): any[] 
   Object.keys(stockMap).forEach((symbol) => {
     const stockTxns = transactions.filter((t) => t.stockSymbol === symbol);
     const realizedPnL = calculateRealizedPnLForStock(stockTxns);
-    console.log(`Stock ${symbol}: Realized P&L = ${realizedPnL}, Unrealized P&L = ${stockMap[symbol].unrealizedPnL}`);
     stockMap[symbol].realizedPnL = realizedPnL;
     stockMap[symbol].totalPnL = realizedPnL + stockMap[symbol].unrealizedPnL;
   });
@@ -348,24 +338,6 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
   const sells = transactions.filter((t) => t.type === 'SELL').sort((a, b) =>
     new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
-
-  console.log(`calculateRealizedPnLForStock - Buys: ${buys.length}, Sells: ${sells.length}`);
-
-  if (buys.length > 0) {
-    console.log('First Buy:', {
-      qty: buys[0].quantity,
-      netAmount: buys[0].netAmount,
-      pricePerShare: buys[0].pricePerShare
-    });
-  }
-
-  if (sells.length > 0) {
-    console.log('First Sell:', {
-      qty: sells[0].quantity,
-      netAmount: sells[0].netAmount,
-      pricePerShare: sells[0].pricePerShare
-    });
-  }
 
   let buyQueue = [...buys];
   let totalPnL = 0;
@@ -403,7 +375,6 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
     }
   });
 
-  console.log(`Total P&L for stock: ${totalPnL}`);
   return totalPnL;
 }
 
