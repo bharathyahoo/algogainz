@@ -30,9 +30,9 @@ import {
   TrendingDown,
   CalendarToday,
 } from '@mui/icons-material';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DateTimePicker } from '@mui/x-date-pickers';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3';
 import {
   transactionService,
   type ManualTransactionRequest,
@@ -262,7 +262,7 @@ const ManualTransactionDialog: React.FC<ManualTransactionDialogProps> = ({
           <DateTimePicker
             label="Transaction Date & Time"
             value={transactionDate}
-            onChange={(newValue) => newValue && setTransactionDate(newValue)}
+            onChange={(newValue: Date | null) => newValue && setTransactionDate(newValue)}
             maxDateTime={new Date()}
             slotProps={{
               textField: {

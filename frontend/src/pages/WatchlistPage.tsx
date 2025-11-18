@@ -628,7 +628,7 @@ const WatchlistPage: React.FC = () => {
           });
           setManualTransactionDialogOpen(false);
         }}
-        stockOptions={stocks.map(s => ({ symbol: s.stock_symbol, name: s.company_name }))}
+        stockOptions={stocks.map(s => ({ symbol: s.stockSymbol, name: s.companyName }))}
       />
 
       {/* Floating Action Button */}
