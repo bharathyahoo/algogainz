@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, Snackbar, Slide, SlideProps } from '@mui/material';
+import { Alert, Snackbar, Slide } from '@mui/material';
+import type { SlideProps } from '@mui/material';
 import { WifiOff, Wifi } from '@mui/icons-material';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
