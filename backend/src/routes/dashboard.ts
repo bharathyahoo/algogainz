@@ -373,10 +373,13 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
     while (remainingQty > 0 && buyQueue.length > 0) {
       const buy = buyQueue[0];
 
+      console.log(`BEFORE SET - buy.quantity: ${buy.quantity}, buy.remainingQty: ${buy.remainingQty}`);
+
       if (buy.remainingQty === undefined) {
         buy.remainingQty = buy.quantity;
       }
 
+      console.log(`AFTER SET - buy.quantity: ${buy.quantity}, buy.remainingQty: ${buy.remainingQty}`);
       console.log(`Buy remainingQty: ${buy.remainingQty}, type: ${typeof buy.remainingQty}`);
       console.log(`Sell remainingQty: ${remainingQty}, type: ${typeof remainingQty}`);
 
