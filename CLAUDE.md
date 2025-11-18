@@ -30,7 +30,7 @@ You are building **AlgoGainz** - a Progressive Web Application (PWA) for short-t
 - **Authentication**: JWT tokens
 
 ### Technical Analysis
-- **Library**: tulip-indicators (Node.js) or TA-Lib (Python)
+- **Library**: technicalindicators (Node.js) or TA-Lib (Python)
 - **Indicators**: RSI, MACD, Moving Averages, Bollinger Bands, Volume Analysis
 
 ### External APIs
@@ -168,7 +168,7 @@ npm install prisma @prisma/client
 npm install jsonwebtoken bcrypt
 npm install ws socket.io
 npm install axios
-npm install tulip-indicators
+npm install technicalindicators
 npm install exceljs
 npm install express-rate-limit
 ```
@@ -861,7 +861,7 @@ GET /margins/{segment}
 ## Resources
 
 - **Kite Connect Docs**: https://kite.trade/docs/connect/v3/
-- **Tulip Indicators**: https://tulipindicators.org/
+- **Technical Indicators**: https://github.com/anandanand84/technicalindicators
 - **React PWA**: https://create-react-app.dev/docs/making-a-progressive-web-app/
 - **Material-UI**: https://mui.com/
 - **Redux Toolkit**: https://redux-toolkit.js.org/
