@@ -363,7 +363,7 @@ export async function generateTransactionReport(filters: ReportFilters): Promise
 
     // Color code P&L values
     if (item.metric.includes('P&L') || item.metric === 'Total P&L') {
-      const pnlValue = parseFloat(item.value.replace(/[₹,]/g, ''));
+      const pnlValue = parseFloat(String(item.value).replace(/[₹,]/g, ''));
       row.getCell('value').fill = {
         type: 'pattern',
         pattern: 'solid',
