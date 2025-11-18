@@ -82,14 +82,29 @@ const DashboardPage: React.FC = () => {
             </Paper>
           </Grid>
 
-          {/* Coming Soon Cards */}
+          {/* Feature Cards */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Paper
+              sx={{
+                p: 3,
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                '&:hover': {
+                  boxShadow: 6,
+                  transform: 'translateY(-4px)',
+                },
+              }}
+              onClick={() => navigate('/watchlist')}
+            >
               <Typography variant="h6" gutterBottom>
                 📊 Watchlist
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Coming in Phase 3
+              <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                ✅ Available Now!
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Click to manage your stocks
               </Typography>
             </Paper>
           </Grid>
@@ -129,9 +144,9 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Status Info */}
-        <Paper sx={{ p: 3, mt: 3, bgcolor: 'info.light' }}>
-          <Typography variant="body2" color="info.contrastText">
-            <strong>Phase 2 Complete!</strong> Authentication and Kite integration is working. Next up: Building the Watchlist (Phase 3).
+        <Paper sx={{ p: 3, mt: 3, bgcolor: 'success.light' }}>
+          <Typography variant="body2" color="success.contrastText">
+            <strong>Phase 3 Complete!</strong> Watchlist management is now available! Search and add stocks, organize with categories, and track prices. Next up: Technical Analysis (Phase 4).
           </Typography>
         </Paper>
       </Container>

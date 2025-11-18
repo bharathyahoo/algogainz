@@ -7,6 +7,7 @@ import { store } from './store';
 import LoginPage from './pages/LoginPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import DashboardPage from './pages/DashboardPage';
+import WatchlistPage from './pages/WatchlistPage';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/watchlist"
+              element={
+                <ProtectedRoute>
+                  <WatchlistPage />
                 </ProtectedRoute>
               }
             />
