@@ -132,6 +132,23 @@ export class TradingService {
   ): Promise<any> {
     const kite = createKiteService(accessToken);
 
+    // Validate required fields
+    if (!orderRequest.exchange || orderRequest.exchange.trim() === '') {
+      throw new Error('Exchange is required');
+    }
+
+    if (!orderRequest.stockSymbol || orderRequest.stockSymbol.trim() === '') {
+      throw new Error('Stock symbol is required');
+    }
+
+    console.log('Placing order with params:', {
+      stockSymbol: orderRequest.stockSymbol,
+      exchange: orderRequest.exchange,
+      transactionType: orderRequest.transactionType,
+      quantity: orderRequest.quantity,
+      orderType: orderRequest.orderType,
+    });
+
     // Build Kite order params
     const orderParams: any = {
       tradingsymbol: orderRequest.stockSymbol,

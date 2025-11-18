@@ -86,6 +86,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
       setLoading(true);
 
       try {
+        console.log('OrderDialog - exchange value:', exchange, 'stockSymbol:', stockSymbol);
+
         const orderRequest: OrderRequest = {
           stockSymbol,
           companyName,
@@ -97,6 +99,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
           price: orderType === 'LIMIT' ? parseFloat(limitPrice) : undefined,
         };
 
+        console.log('OrderDialog - orderRequest:', orderRequest);
         const orderPreview = await tradingService.getOrderPreview(orderRequest);
         setPreview(orderPreview);
         setActiveStep(1);
@@ -111,6 +114,8 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
       setError('');
 
       try {
+        console.log('OrderDialog - Placing order with exchange:', exchange);
+
         const orderRequest: OrderRequest = {
           stockSymbol,
           companyName,
@@ -122,6 +127,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
           price: orderType === 'LIMIT' ? parseFloat(limitPrice) : undefined,
         };
 
+        console.log('OrderDialog - Final orderRequest:', orderRequest);
         await tradingService.placeOrder(orderRequest);
         setActiveStep(2);
         if (onSuccess) {
