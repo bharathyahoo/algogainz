@@ -7,7 +7,6 @@ import {
   Alert,
   CircularProgress,
   Paper,
-  Divider,
 } from '@mui/material';
 import { AccountBalance, TrendingUp } from '@mui/icons-material';
 import { holdingsService, type Holding } from '../services/holdingsService';
