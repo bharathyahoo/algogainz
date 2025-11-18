@@ -28,7 +28,6 @@ import {
   Receipt,
   TrendingUp,
   TrendingDown,
-  CalendarToday,
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers';
@@ -268,9 +267,6 @@ const ManualTransactionDialog: React.FC<ManualTransactionDialogProps> = ({
               textField: {
                 fullWidth: true,
                 sx: { mb: 2 },
-                InputProps: {
-                  endAdornment: <CalendarToday color="action" />,
-                },
               },
             }}
           />
