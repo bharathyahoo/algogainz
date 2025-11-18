@@ -368,6 +368,7 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
 
   sells.forEach((sell) => {
     let remainingQty = sell.quantity;
+    console.log(`Processing sell - remainingQty: ${remainingQty}, type: ${typeof remainingQty}`);
 
     while (remainingQty > 0 && buyQueue.length > 0) {
       const buy = buyQueue[0];
@@ -376,7 +377,11 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
         buy.remainingQty = buy.quantity;
       }
 
+      console.log(`Buy remainingQty: ${buy.remainingQty}, type: ${typeof buy.remainingQty}`);
+      console.log(`Sell remainingQty: ${remainingQty}, type: ${typeof remainingQty}`);
+
       const matchQty = Math.min(remainingQty, buy.remainingQty);
+      console.log(`Math.min(${remainingQty}, ${buy.remainingQty}) = ${matchQty}`);
 
       const buyCost = (Math.abs(buy.netAmount) / buy.quantity) * matchQty;
       const sellProceeds = (Math.abs(sell.netAmount) / sell.quantity) * matchQty;
