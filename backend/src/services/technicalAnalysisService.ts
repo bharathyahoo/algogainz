@@ -74,12 +74,17 @@ export class TechnicalAnalysisService {
       const fromDate = new Date();
       fromDate.setDate(fromDate.getDate() - days);
 
+      const apiKey = process.env.KITE_API_KEY;
+      if (!apiKey) {
+        throw new Error('KITE_API_KEY not configured');
+      }
+
       const response = await axios.get(
         `${this.kiteBaseUrl}/instruments/historical/${instrumentToken}/${interval}`,
         {
           headers: {
             'X-Kite-Version': '3',
-            Authorization: `token ${accessToken}`,
+            Authorization: `token ${apiKey}:${accessToken}`,
           },
           params: {
             from: fromDate.toISOString().split('T')[0],
