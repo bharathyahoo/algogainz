@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage';
 import WatchlistPage from './pages/WatchlistPage';
 import HoldingsPage from './pages/HoldingsPage';
 import TransactionsPage from './pages/TransactionsPage';
+import ReportsPage from './pages/ReportsPage';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -75,6 +76,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TransactionsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <ReportsPage />
                 </ProtectedRoute>
               }
             />
