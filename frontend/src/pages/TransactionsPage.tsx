@@ -20,10 +20,12 @@ import { Receipt, FilterList, Refresh } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { useSearchParams } from 'react-router-dom';
 import { transactionService, type Transaction, type TransactionFilters } from '../services/transactionService';
 import TransactionCard from '../components/transactions/TransactionCard';
 
 const TransactionsPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -34,10 +36,26 @@ const TransactionsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<'BUY' | 'SELL' | 'ALL'>('ALL');
   const [sourceFilter, setSourceFilter] = useState<'APP_EXECUTED' | 'MANUALLY_RECORDED' | 'ALL'>('ALL');
   const [symbolFilter, setSymbolFilter] = useState<string>('');
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
-    loadTransactions();
-  }, []);
+    // Check for symbol query parameter on initial load
+    const symbolParam = searchParams.get('symbol');
+    if (symbolParam && initialLoad) {
+      setSymbolFilter(symbolParam);
+      setInitialLoad(false);
+      // Load transactions with the symbol filter
+      const filters: TransactionFilters = {
+        symbol: symbolParam,
+        type: 'ALL',
+        source: 'ALL',
+      };
+      loadTransactions(filters);
+    } else if (initialLoad) {
+      setInitialLoad(false);
+      loadTransactions();
+    }
+  }, [searchParams, initialLoad]);
 
   const loadTransactions = async (filters?: TransactionFilters) => {
     setLoading(true);

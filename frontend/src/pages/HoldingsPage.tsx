@@ -12,6 +12,7 @@ import { AccountBalance, TrendingUp } from '@mui/icons-material';
 import { holdingsService, type Holding } from '../services/holdingsService';
 import HoldingCard from '../components/holdings/HoldingCard';
 import ExitStrategyDialog from '../components/holdings/ExitStrategyDialog';
+import OrderDialog from '../components/trading/OrderDialog';
 
 const HoldingsPage: React.FC = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -19,6 +20,7 @@ const HoldingsPage: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
   const [exitStrategyDialogOpen, setExitStrategyDialogOpen] = useState(false);
+  const [sellDialogOpen, setSellDialogOpen] = useState(false);
 
   useEffect(() => {
     loadHoldings();
@@ -42,8 +44,18 @@ const HoldingsPage: React.FC = () => {
     setExitStrategyDialogOpen(true);
   };
 
+  const handleSell = (holding: Holding) => {
+    setSelectedHolding(holding);
+    setSellDialogOpen(true);
+  };
+
   const handleExitStrategySuccess = () => {
     loadHoldings(); // Refresh holdings after setting exit strategy
+  };
+
+  const handleSellSuccess = () => {
+    loadHoldings(); // Refresh holdings after selling
+    setSellDialogOpen(false);
   };
 
   // Calculate portfolio totals
@@ -155,7 +167,11 @@ const HoldingsPage: React.FC = () => {
         <Grid container spacing={3}>
           {holdings.map((holding) => (
             <Grid item xs={12} sm={6} md={4} key={holding.id}>
-              <HoldingCard holding={holding} onSetExitStrategy={handleSetExitStrategy} />
+              <HoldingCard
+                holding={holding}
+                onSetExitStrategy={handleSetExitStrategy}
+                onSell={handleSell}
+              />
             </Grid>
           ))}
         </Grid>
@@ -191,6 +207,21 @@ const HoldingsPage: React.FC = () => {
         holding={selectedHolding}
         onSuccess={handleExitStrategySuccess}
       />
+
+      {/* Sell Order Dialog */}
+      {selectedHolding && (
+        <OrderDialog
+          open={sellDialogOpen}
+          onClose={() => setSellDialogOpen(false)}
+          stockSymbol={selectedHolding.stockSymbol}
+          companyName={selectedHolding.companyName}
+          exchange="NSE"
+          instrumentToken=""
+          currentPrice={selectedHolding.currentPrice || selectedHolding.avgBuyPrice}
+          transactionType="SELL"
+          onSuccess={handleSellSuccess}
+        />
+      )}
     </Container>
   );
 };
