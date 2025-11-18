@@ -311,7 +311,7 @@ router.get('/alerts', authMiddleware, async (req: AuthRequest, res: Response) =>
       },
     });
 
-    const alerts = holdings.map(holding => ({
+    const alerts = holdings.map((holding: any) => ({
       holdingId: holding.id,
       stockSymbol: holding.stockSymbol,
       companyName: holding.companyName,

@@ -14,6 +14,7 @@ import analysisRoutes from './routes/analysis';
 import tradingRoutes from './routes/trading';
 import transactionsRoutes from './routes/transactions';
 import holdingsRoutes from './routes/holdings';
+import dashboardRoutes from './routes/dashboard';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -41,7 +42,7 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/trading', tradingRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/holdings', holdingsRoutes);
-// app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 // app.use('/api/reports', reportsRoutes);
 
 // Error handling middleware

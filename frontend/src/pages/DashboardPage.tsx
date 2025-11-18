@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -8,17 +8,52 @@ import {
   Button,
   Paper,
   Grid,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
-import { Logout, TrendingUp } from '@mui/icons-material';
+import {
+  Logout,
+  TrendingUp,
+  AccountBalance,
+  ShowChart,
+  TrendingDown,
+  AttachMoney,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/useRedux';
 import { logout } from '../store/authSlice';
 import { authService } from '../services/authService';
+import dashboardService, { type DashboardMetrics } from '../services/dashboardService';
+import PnLTrendChart from '../components/dashboard/PnLTrendChart';
+import WinLossChart from '../components/dashboard/WinLossChart';
+import PerformersCard from '../components/dashboard/PerformersCard';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadMetrics();
+  }, []);
+
+  const loadMetrics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await dashboardService.getMetrics();
+      setMetrics(data);
+    } catch (err: any) {
+      console.error('Error loading dashboard metrics:', err);
+      setError(err.response?.data?.error?.message || 'Failed to load dashboard metrics');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -31,6 +66,17 @@ const DashboardPage: React.FC = () => {
       dispatch(logout());
       navigate('/login');
     }
+  };
+
+  const formatCurrency = (value: number | null | undefined) => {
+    const safeValue = value ?? 0;
+    return `₹${safeValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatPercent = (value: number | null | undefined) => {
+    const safeValue = value ?? 0;
+    const sign = safeValue >= 0 ? '+' : '';
+    return `${sign}${safeValue.toFixed(2)}%`;
   };
 
   return (
@@ -56,129 +102,278 @@ const DashboardPage: React.FC = () => {
       </AppBar>
 
       {/* Content */}
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-          Dashboard
-        </Typography>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box>
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
+              Portfolio Dashboard
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Welcome back, {user?.userName || 'User'}!
+            </Typography>
+          </Box>
+        </Box>
 
-        <Grid container spacing={3}>
-          {/* Welcome Card */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h5" gutterBottom>
-                🎉 Welcome to AlgoGainz!
-              </Typography>
-              <Typography variant="body1" color="text.secondary" paragraph>
-                You've successfully authenticated with Zerodha Kite. Your trading assistant is ready!
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                <strong>User ID:</strong> {user?.userId}
-              </Typography>
-              {user?.email && (
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Email:</strong> {user.email}
-                </Typography>
-              )}
-            </Paper>
-          </Grid>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        ) : metrics ? (
+          <>
+            {/* Portfolio Metrics */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {/* Total Invested */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <AccountBalance sx={{ color: 'primary.main', mr: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Total Invested
+                    </Typography>
+                  </Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {formatCurrency(metrics.totalInvested)}
+                  </Typography>
+                </Paper>
+              </Grid>
 
-          {/* Feature Cards */}
-          <Grid item xs={12} md={6}>
-            <Paper
-              sx={{
-                p: 3,
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  boxShadow: 6,
-                  transform: 'translateY(-4px)',
-                },
-              }}
-              onClick={() => navigate('/watchlist')}
-            >
-              <Typography variant="h6" gutterBottom>
-                📊 Watchlist
-              </Typography>
-              <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                ✅ Available Now!
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Click to manage your stocks
-              </Typography>
-            </Paper>
-          </Grid>
+              {/* Current Portfolio Value */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <ShowChart sx={{ color: 'info.main', mr: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Current Value
+                    </Typography>
+                  </Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {formatCurrency(metrics.currentPortfolioValue)}
+                  </Typography>
+                </Paper>
+              </Grid>
 
-          <Grid item xs={12} md={6}>
-            <Paper
-              sx={{
-                p: 3,
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  boxShadow: 6,
-                  transform: 'translateY(-4px)',
-                },
-              }}
-              onClick={() => navigate('/holdings')}
-            >
-              <Typography variant="h6" gutterBottom>
-                💼 Holdings
-              </Typography>
-              <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                ✅ Available Now!
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Click to manage your holdings & exit strategies
-              </Typography>
-            </Paper>
-          </Grid>
+              {/* Total P&L */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper
+                  sx={{
+                    p: 2.5,
+                    bgcolor: (metrics.totalPnL ?? 0) >= 0 ? 'success.50' : 'error.50',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    {(metrics.totalPnL ?? 0) >= 0 ? (
+                      <TrendingUp sx={{ color: 'success.main', mr: 1 }} />
+                    ) : (
+                      <TrendingDown sx={{ color: 'error.main', mr: 1 }} />
+                    )}
+                    <Typography variant="body2" color="text.secondary">
+                      Total P&L
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 700,
+                      color: (metrics.totalPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
+                    }}
+                  >
+                    {formatCurrency(metrics.totalPnL)}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      mt: 0.5,
+                      fontWeight: 600,
+                      color: (metrics.totalPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
+                    }}
+                  >
+                    {formatPercent(metrics.returnPercent)}
+                  </Typography>
+                </Paper>
+              </Grid>
 
-          <Grid item xs={12} md={6}>
-            <Paper
-              sx={{
-                p: 3,
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  boxShadow: 6,
-                  transform: 'translateY(-4px)',
-                },
-              }}
-              onClick={() => navigate('/transactions')}
-            >
-              <Typography variant="h6" gutterBottom>
-                📈 Transactions
-              </Typography>
-              <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                ✅ Available Now!
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Click to view your transaction history
-              </Typography>
-            </Paper>
-          </Grid>
+              {/* Win Rate */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2.5 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <AttachMoney sx={{ color: 'warning.main', mr: 1 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      Win Rate
+                    </Typography>
+                  </Box>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {(metrics.winRate ?? 0).toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {metrics.totalTrades ?? 0} total trades
+                  </Typography>
+                </Paper>
+              </Grid>
 
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="h6" gutterBottom>
-                📑 Reports
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Coming in Phase 6
-              </Typography>
-            </Paper>
-          </Grid>
-        </Grid>
+              {/* Realized P&L */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper sx={{ p: 2.5 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Realized P&L
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      color: (metrics.realizedPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
+                    }}
+                  >
+                    {formatCurrency(metrics.realizedPnL)}
+                  </Typography>
+                </Paper>
+              </Grid>
 
-        {/* Status Info */}
-        <Paper sx={{ p: 3, mt: 3, bgcolor: 'success.light' }}>
-          <Typography variant="body2" color="success.contrastText">
-            <strong>Phase 3 Complete!</strong> Watchlist management is now available! Search and add stocks, organize with categories, and track prices. Next up: Technical Analysis (Phase 4).
-          </Typography>
-        </Paper>
+              {/* Unrealized P&L */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper sx={{ p: 2.5 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Unrealized P&L
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      color: (metrics.unrealizedPnL ?? 0) >= 0 ? 'success.main' : 'error.main',
+                    }}
+                  >
+                    {formatCurrency(metrics.unrealizedPnL)}
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Avg Profit Per Trade */}
+              <Grid item xs={12} sm={6} md={4}>
+                <Paper sx={{ p: 2.5 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Avg Profit Per Trade
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      color: (metrics.avgProfitPerTrade ?? 0) >= 0 ? 'success.main' : 'error.main',
+                    }}
+                  >
+                    {formatCurrency(metrics.avgProfitPerTrade)}
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            {/* Charts Section */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {/* P&L Trend Chart */}
+              <Grid item xs={12} lg={8}>
+                <PnLTrendChart />
+              </Grid>
+
+              {/* Win/Loss Chart */}
+              <Grid item xs={12} lg={4}>
+                <WinLossChart totalTrades={metrics.totalTrades ?? 0} winRate={metrics.winRate ?? 0} />
+              </Grid>
+
+              {/* Performers */}
+              <Grid item xs={12}>
+                <PerformersCard
+                  topPerformers={metrics.topPerformers ?? []}
+                  worstPerformers={metrics.worstPerformers ?? []}
+                />
+              </Grid>
+            </Grid>
+
+            {/* Quick Links */}
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      boxShadow: 6,
+                      transform: 'translateY(-4px)',
+                    },
+                  }}
+                  onClick={() => navigate('/watchlist')}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    📊 Watchlist
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Manage your stocks
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      boxShadow: 6,
+                      transform: 'translateY(-4px)',
+                    },
+                  }}
+                  onClick={() => navigate('/holdings')}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    💼 Holdings
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    View holdings & exit strategies
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      boxShadow: 6,
+                      transform: 'translateY(-4px)',
+                    },
+                  }}
+                  onClick={() => navigate('/transactions')}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    📈 Transactions
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    View transaction history
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="h6" gutterBottom>
+                    📑 Reports
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Coming in Phase 11
+                  </Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+          </>
+        ) : null}
       </Container>
     </Box>
   );
