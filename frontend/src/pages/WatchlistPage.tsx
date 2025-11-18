@@ -37,6 +37,7 @@ import StockSearchInput from '../components/watchlist/StockSearchInput';
 import StockCard from '../components/watchlist/StockCard';
 import RecommendationCard from '../components/analysis/RecommendationCard';
 import TechnicalIndicatorsPanel from '../components/analysis/TechnicalIndicatorsPanel';
+import OrderDialog from '../components/trading/OrderDialog';
 import type { WatchlistStock } from '../types';
 
 const WatchlistPage: React.FC = () => {
@@ -49,6 +50,8 @@ const WatchlistPage: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [orderType, setOrderType] = useState<'BUY' | 'SELL'>('BUY');
   const [selectedStock, setSelectedStock] = useState<WatchlistStock | null>(null);
   const [selectedStockForAdd, setSelectedStockForAdd] = useState<StockSearchResult | null>(null);
   const [stockCategories, setStockCategories] = useState<string[]>([]);
@@ -538,6 +541,32 @@ const WatchlistPage: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
+          {analysis && selectedStock && (
+            <>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => {
+                  setOrderType('BUY');
+                  setOrderDialogOpen(true);
+                }}
+                sx={{ mr: 'auto' }}
+              >
+                Buy
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => {
+                  setOrderType('SELL');
+                  setOrderDialogOpen(true);
+                }}
+                sx={{ mr: 2 }}
+              >
+                Sell
+              </Button>
+            </>
+          )}
           <Button
             onClick={() => {
               setAnalysisDialogOpen(false);
@@ -549,6 +578,24 @@ const WatchlistPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Order Dialog */}
+      {selectedStock && analysis && (
+        <OrderDialog
+          open={orderDialogOpen}
+          onClose={() => setOrderDialogOpen(false)}
+          stockSymbol={selectedStock.stockSymbol}
+          companyName={selectedStock.companyName}
+          exchange={selectedStock.exchange as 'NSE' | 'BSE'}
+          instrumentToken={selectedStock.instrumentToken}
+          currentPrice={analysis.price}
+          transactionType={orderType}
+          onSuccess={() => {
+            showSnackbar(`${orderType} order placed successfully`, 'success');
+            setOrderDialogOpen(false);
+          }}
+        />
+      )}
 
       {/* Snackbar */}
       <Snackbar
