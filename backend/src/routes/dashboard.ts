@@ -102,12 +102,12 @@ function calculatePortfolioMetrics(transactions: any[], holdings: any[]) {
   // Calculate total invested (all buys)
   const totalInvested = transactions
     .filter((t) => t.type === 'BUY')
-    .reduce((sum, t) => sum + t.totalValue, 0);
+    .reduce((sum, t) => sum + Math.abs(t.netAmount), 0);
 
   // Calculate total proceeds (all sells)
   const totalProceeds = transactions
     .filter((t) => t.type === 'SELL')
-    .reduce((sum, t) => sum + t.totalValue, 0);
+    .reduce((sum, t) => sum + Math.abs(t.netAmount), 0);
 
   // Calculate realized P&L using FIFO
   const realizedPnL = calculateRealizedPnL(transactions);
@@ -176,10 +176,10 @@ function calculateRealizedPnL(transactions: any[]): number {
 
   // Group transactions by symbol
   transactions.forEach((t) => {
-    if (!stockTransactions[t.symbol]) {
-      stockTransactions[t.symbol] = [];
+    if (!stockTransactions[t.stockSymbol]) {
+      stockTransactions[t.stockSymbol] = [];
     }
-    stockTransactions[t.symbol].push(t);
+    stockTransactions[t.stockSymbol].push(t);
   });
 
   let totalRealizedPnL = 0;
@@ -197,7 +197,6 @@ function calculateRealizedPnL(transactions: any[]): number {
 
     sells.forEach((sell) => {
       let remainingQty = sell.quantity;
-      let sellCost = sell.totalValue; // This is negative for sells (proceeds - charges)
 
       while (remainingQty > 0 && buyQueue.length > 0) {
         const buy = buyQueue[0];
@@ -207,14 +206,13 @@ function calculateRealizedPnL(transactions: any[]): number {
         }
 
         const matchQty = Math.min(remainingQty, buy.remainingQty);
-        const matchRatio = matchQty / sell.quantity;
 
         // Calculate proportional buy cost and sell proceeds
-        const buyCost = (buy.totalValue / buy.quantity) * matchQty;
-        const sellProceeds = (sell.totalValue / sell.quantity) * matchQty;
+        const buyCost = (Math.abs(buy.netAmount) / buy.quantity) * matchQty;
+        const sellProceeds = (Math.abs(sell.netAmount) / sell.quantity) * matchQty;
 
-        // P&L = Sell proceeds - Buy cost (sell proceeds are already negative)
-        const pnl = Math.abs(sellProceeds) - buyCost;
+        // P&L = Sell proceeds - Buy cost
+        const pnl = sellProceeds - buyCost;
 
         totalRealizedPnL += pnl;
 
@@ -236,10 +234,10 @@ function calculateCompletedTrades(transactions: any[]): any[] {
 
   // Group transactions by symbol
   transactions.forEach((t) => {
-    if (!stockTransactions[t.symbol]) {
-      stockTransactions[t.symbol] = [];
+    if (!stockTransactions[t.stockSymbol]) {
+      stockTransactions[t.stockSymbol] = [];
     }
-    stockTransactions[t.symbol].push(t);
+    stockTransactions[t.stockSymbol].push(t);
   });
 
   const completedTrades: any[] = [];
@@ -268,9 +266,9 @@ function calculateCompletedTrades(transactions: any[]): any[] {
         const matchQty = Math.min(remainingQty, buy.remainingQty);
 
         // Calculate proportional costs
-        const buyCost = (buy.totalValue / buy.quantity) * matchQty;
-        const sellProceeds = (sell.totalValue / sell.quantity) * matchQty;
-        const pnl = Math.abs(sellProceeds) - buyCost;
+        const buyCost = (Math.abs(buy.netAmount) / buy.quantity) * matchQty;
+        const sellProceeds = (Math.abs(sell.netAmount) / sell.quantity) * matchQty;
+        const pnl = sellProceeds - buyCost;
 
         completedTrades.push({
           symbol,
@@ -300,9 +298,9 @@ function calculateStockPerformance(transactions: any[], holdings: any[]): any[] 
 
   // Initialize with transactions
   transactions.forEach((t) => {
-    if (!stockMap[t.symbol]) {
-      stockMap[t.symbol] = {
-        symbol: t.symbol,
+    if (!stockMap[t.stockSymbol]) {
+      stockMap[t.stockSymbol] = {
+        symbol: t.stockSymbol,
         companyName: t.companyName,
         realizedPnL: 0,
         unrealizedPnL: 0,
@@ -312,14 +310,14 @@ function calculateStockPerformance(transactions: any[], holdings: any[]): any[] 
 
   // Add holdings unrealized P&L
   holdings.forEach((h) => {
-    if (stockMap[h.symbol]) {
-      stockMap[h.symbol].unrealizedPnL = h.unrealizedPnL || 0;
+    if (stockMap[h.stockSymbol]) {
+      stockMap[h.stockSymbol].unrealizedPnL = h.unrealizedPnL || 0;
     }
   });
 
   // Calculate realized P&L per stock
   Object.keys(stockMap).forEach((symbol) => {
-    const stockTxns = transactions.filter((t) => t.symbol === symbol);
+    const stockTxns = transactions.filter((t) => t.stockSymbol === symbol);
     const realizedPnL = calculateRealizedPnLForStock(stockTxns);
     stockMap[symbol].realizedPnL = realizedPnL;
     stockMap[symbol].totalPnL = realizedPnL + stockMap[symbol].unrealizedPnL;
@@ -351,9 +349,9 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
 
       const matchQty = Math.min(remainingQty, buy.remainingQty);
 
-      const buyCost = (buy.totalValue / buy.quantity) * matchQty;
-      const sellProceeds = (sell.totalValue / sell.quantity) * matchQty;
-      const pnl = Math.abs(sellProceeds) - buyCost;
+      const buyCost = (Math.abs(buy.netAmount) / buy.quantity) * matchQty;
+      const sellProceeds = (Math.abs(sell.netAmount) / sell.quantity) * matchQty;
+      const pnl = sellProceeds - buyCost;
 
       totalPnL += pnl;
 
@@ -412,9 +410,9 @@ function calculatePnLTrend(transactions: any[], period: string): any[] {
     }
 
     if (t.type === 'BUY') {
-      dailyPnL[date] -= t.totalValue;
+      dailyPnL[date] -= Math.abs(t.netAmount);
     } else {
-      dailyPnL[date] += Math.abs(t.totalValue);
+      dailyPnL[date] += Math.abs(t.netAmount);
     }
   });
 
