@@ -362,12 +362,24 @@ const DashboardPage: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 2, textAlign: 'center' }}>
+                <Paper
+                  sx={{
+                    p: 2,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s',
+                    '&:hover': {
+                      boxShadow: 6,
+                      transform: 'translateY(-4px)',
+                    },
+                  }}
+                  onClick={() => navigate('/reports')}
+                >
                   <Typography variant="h6" gutterBottom>
                     📑 Reports
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Coming in Phase 11
+                    Generate & export Excel reports
                   </Typography>
                 </Paper>
               </Grid>
