@@ -36,7 +36,7 @@ model Watchlist {
   companyName   String   @map("company_name")
   exchange      String   @default("NSE") // NSE or BSE
   instrumentToken String @map("instrument_token")
-  categories    String[] // Array of category names
+  categories    String   @default("[]") // JSON array of category names
   sortOrder     Int      @default(0) @map("sort_order") // For drag-and-drop ordering
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")

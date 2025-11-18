@@ -28,9 +28,15 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       orderBy: { sortOrder: 'asc' }
     });
 
+    // Parse categories JSON for each item
+    const watchlistWithParsedCategories = watchlist.map((item: any) => ({
+      ...item,
+      categories: JSON.parse(item.categories)
+    }));
+
     res.json({
       success: true,
-      data: watchlist
+      data: watchlistWithParsedCategories
     });
   } catch (error: any) {
     console.error('Get watchlist error:', error);
@@ -110,14 +116,17 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         companyName,
         exchange,
         instrumentToken,
-        categories: categories || [],
+        categories: JSON.stringify(categories || []),
         sortOrder
       }
     });
 
     res.status(201).json({
       success: true,
-      data: watchlistItem,
+      data: {
+        ...watchlistItem,
+        categories: JSON.parse(watchlistItem.categories)
+      },
       message: 'Stock added to watchlist'
     });
   } catch (error: any) {
@@ -181,14 +190,17 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     const updated = await prisma.watchlist.update({
       where: { id },
       data: {
-        ...(categories !== undefined && { categories }),
+        ...(categories !== undefined && { categories: JSON.stringify(categories) }),
         ...(sortOrder !== undefined && { sortOrder })
       }
     });
 
     res.json({
       success: true,
-      data: updated,
+      data: {
+        ...updated,
+        categories: JSON.parse(updated.categories)
+      },
       message: 'Watchlist item updated'
     });
   } catch (error: any) {
@@ -294,7 +306,8 @@ router.get('/categories', authMiddleware, async (req: AuthRequest, res: Response
     // Extract unique categories
     const categoriesSet = new Set<string>();
     watchlist.forEach((item: any) => {
-      item.categories.forEach((cat: string) => categoriesSet.add(cat));
+      const parsedCategories = JSON.parse(item.categories);
+      parsedCategories.forEach((cat: string) => categoriesSet.add(cat));
     });
 
     const categories = Array.from(categoriesSet).sort();
