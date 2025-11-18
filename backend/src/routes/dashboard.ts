@@ -1,13 +1,14 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
-import { prisma } from '../index';
+import { PrismaClient } from '@prisma/client';
 
 const router = Router();
+const prisma = new PrismaClient();
 
 // GET /api/dashboard/metrics - Get comprehensive portfolio metrics
 router.get('/metrics', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.userId;
 
     // Get all transactions
     const transactions = await prisma.transaction.findMany({
@@ -45,7 +46,7 @@ router.get('/metrics', authMiddleware, async (req: AuthRequest, res: Response) =
 // GET /api/dashboard/pnl-trend - Get P&L trend data for charts
 router.get('/pnl-trend', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.userId;
     const { period = '1M' } = req.query; // 1W, 1M, 3M, 6M, 1Y, ALL
 
     // Get all transactions ordered by date
