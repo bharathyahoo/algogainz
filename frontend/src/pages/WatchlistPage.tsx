@@ -32,8 +32,11 @@ import {
 } from '../store/watchlistSlice';
 import { watchlistService } from '../services/watchlistService';
 import type { StockSearchResult } from '../services/watchlistService';
+import { analysisService, type TradingSignal } from '../services/analysisService';
 import StockSearchInput from '../components/watchlist/StockSearchInput';
 import StockCard from '../components/watchlist/StockCard';
+import RecommendationCard from '../components/analysis/RecommendationCard';
+import TechnicalIndicatorsPanel from '../components/analysis/TechnicalIndicatorsPanel';
 import type { WatchlistStock } from '../types';
 
 const WatchlistPage: React.FC = () => {
@@ -45,10 +48,13 @@ const WatchlistPage: React.FC = () => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [analysisDialogOpen, setAnalysisDialogOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<WatchlistStock | null>(null);
   const [selectedStockForAdd, setSelectedStockForAdd] = useState<StockSearchResult | null>(null);
   const [stockCategories, setStockCategories] = useState<string[]>([]);
   const [operationLoading, setOperationLoading] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysis, setAnalysis] = useState<TradingSignal | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -196,6 +202,22 @@ const WatchlistPage: React.FC = () => {
     }
   };
 
+  const handleAnalyzeStock = async (stock: WatchlistStock) => {
+    setSelectedStock(stock);
+    setAnalysisDialogOpen(true);
+    setAnalysisLoading(true);
+    setAnalysis(null);
+
+    try {
+      const result = await analysisService.getAnalysis(stock.instrumentToken);
+      setAnalysis(result);
+    } catch (error: any) {
+      showSnackbar(error.message || 'Failed to analyze stock', 'error');
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
     setSnackbar({ open: true, message, severity });
   };
@@ -279,6 +301,7 @@ const WatchlistPage: React.FC = () => {
                 stock={stock}
                 onRemove={() => handleRemoveClick(stock)}
                 onEdit={handleEditStock}
+                onAnalyze={handleAnalyzeStock}
               />
             </Grid>
           ))}
@@ -450,6 +473,79 @@ const WatchlistPage: React.FC = () => {
             startIcon={operationLoading ? <CircularProgress size={20} /> : <Delete />}
           >
             {operationLoading ? 'Removing...' : 'Remove'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Technical Analysis Dialog */}
+      <Dialog
+        open={analysisDialogOpen}
+        onClose={() => {
+          setAnalysisDialogOpen(false);
+          setAnalysis(null);
+          setSelectedStock(null);
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedStock && (
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Technical Analysis: {selectedStock.stockSymbol}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {selectedStock.companyName}
+              </Typography>
+            </Box>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          {analysisLoading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6 }}>
+              <CircularProgress size={60} />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Analyzing {selectedStock?.stockSymbol}... This may take a few seconds
+              </Typography>
+            </Box>
+          ) : analysis && selectedStock ? (
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              <Grid item xs={12} md={6}>
+                <RecommendationCard
+                  symbol={selectedStock.stockSymbol}
+                  companyName={selectedStock.companyName}
+                  signal={analysis.signal}
+                  score={analysis.score}
+                  confidence={analysis.confidence}
+                  reasons={analysis.reasons}
+                  price={analysis.price}
+                  timestamp={new Date(analysis.timestamp)}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TechnicalIndicatorsPanel
+                  indicators={analysis.indicators}
+                  currentPrice={analysis.price}
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+              <Typography color="text.secondary">
+                No analysis available
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setAnalysisDialogOpen(false);
+              setAnalysis(null);
+              setSelectedStock(null);
+            }}
+          >
+            Close
           </Button>
         </DialogActions>
       </Dialog>
