@@ -108,7 +108,19 @@ export class TradingService {
       const kite = createKiteService(accessToken);
       const margins = await kite.getMargins('equity');
 
-      const available = margins.equity?.available?.cash || 0;
+      // Log the full response to debug
+      console.log('Margins API Response:', JSON.stringify(margins, null, 2));
+
+      // Try different possible paths in the response
+      const available =
+        margins.equity?.available?.cash ||
+        margins.available?.cash ||
+        margins.cash ||
+        0;
+
+      console.log('Available margin extracted:', available);
+      console.log('Required amount:', requiredAmount);
+
       const sufficient = available >= requiredAmount;
 
       return {
