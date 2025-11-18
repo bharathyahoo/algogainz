@@ -1,19 +1,36 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import { Provider } from 'react-redux';
 import { store } from './store';
 
-// Pages
-import LoginPage from './pages/LoginPage';
-import AuthCallbackPage from './pages/AuthCallbackPage';
-import DashboardPage from './pages/DashboardPage';
-import WatchlistPage from './pages/WatchlistPage';
-import HoldingsPage from './pages/HoldingsPage';
-import TransactionsPage from './pages/TransactionsPage';
-import ReportsPage from './pages/ReportsPage';
-
-// Components
+// Components loaded immediately (critical path)
 import ProtectedRoute from './components/common/ProtectedRoute';
+import OfflineBanner from './components/common/OfflineBanner';
+
+// Lazy-loaded pages (code splitting)
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const WatchlistPage = lazy(() => import('./pages/WatchlistPage'));
+const HoldingsPage = lazy(() => import('./pages/HoldingsPage'));
+const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+
+// Loading fallback component
+const PageLoader = () => (
+  <Box
+    sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      backgroundColor: 'background.default',
+    }}
+  >
+    <CircularProgress size={60} />
+  </Box>
+);
 
 // Create Material-UI theme
 const theme = createTheme({
@@ -40,60 +57,66 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/auth/success" element={<AuthCallbackPage />} />
-            <Route path="/auth/error" element={<AuthCallbackPage />} />
+          {/* Offline Detection Banner */}
+          <OfflineBanner />
 
-            {/* Protected Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/watchlist"
-              element={
-                <ProtectedRoute>
-                  <WatchlistPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/holdings"
-              element={
-                <ProtectedRoute>
-                  <HoldingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/transactions"
-              element={
-                <ProtectedRoute>
-                  <TransactionsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <ProtectedRoute>
-                  <ReportsPage />
-                </ProtectedRoute>
-              }
-            />
+          {/* Routes with Suspense for lazy loading */}
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/success" element={<AuthCallbackPage />} />
+              <Route path="/auth/error" element={<AuthCallbackPage />} />
 
-            {/* Default redirect to dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* Protected Routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/watchlist"
+                element={
+                  <ProtectedRoute>
+                    <WatchlistPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/holdings"
+                element={
+                  <ProtectedRoute>
+                    <HoldingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/transactions"
+                element={
+                  <ProtectedRoute>
+                    <TransactionsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
+                    <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* 404 - Redirect to dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+              {/* Default redirect to dashboard */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              {/* 404 - Redirect to dashboard */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </ThemeProvider>
     </Provider>
