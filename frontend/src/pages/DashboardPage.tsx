@@ -110,12 +110,27 @@ const DashboardPage: React.FC = () => {
           </Grid>
 
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
+            <Paper
+              sx={{
+                p: 3,
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                '&:hover': {
+                  boxShadow: 6,
+                  transform: 'translateY(-4px)',
+                },
+              }}
+              onClick={() => navigate('/holdings')}
+            >
               <Typography variant="h6" gutterBottom>
                 💼 Holdings
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Coming in Phase 5
+              <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                ✅ Available Now!
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Click to manage your holdings & exit strategies
               </Typography>
             </Paper>
           </Grid>
