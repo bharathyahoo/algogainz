@@ -1,8 +1,10 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
 const router = express.Router();
+const prisma = new PrismaClient();
 
 /**
  * Step 1: Initiate Kite Login
@@ -86,8 +88,23 @@ router.get('/callback', async (req: Request, res: Response) => {
 
     const { access_token, user_id, user_name, email } = sessionResponse.data.data;
 
-    // TODO: Store user in database using Prisma
-    // For now, we'll create a JWT with user info
+    // Create or update user in database
+    const user = await prisma.user.upsert({
+      where: {
+        kiteUserId: user_id
+      },
+      update: {
+        accessToken: access_token,
+        email: email || undefined
+      },
+      create: {
+        kiteUserId: user_id,
+        accessToken: access_token,
+        apiKey: apiKey,
+        apiSecret: apiSecret,
+        email: email || undefined
+      }
+    });
 
     // Create JWT token for our application
     const jwtSecret = process.env.JWT_SECRET;
@@ -96,7 +113,7 @@ router.get('/callback', async (req: Request, res: Response) => {
     }
 
     const payload = {
-      userId: user_id,
+      userId: user.id, // Use database user ID, not Kite user ID
       userName: user_name,
       email: email,
       kiteAccessToken: access_token
