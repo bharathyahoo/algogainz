@@ -7,6 +7,7 @@ import { store } from './store';
 // Components loaded immediately (critical path)
 import ProtectedRoute from './components/common/ProtectedRoute';
 import OfflineBanner from './components/common/OfflineBanner';
+import Layout from './components/common/Layout';
 
 // Lazy-loaded pages (code splitting)
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -68,12 +69,14 @@ function App() {
               <Route path="/auth/success" element={<AuthCallbackPage />} />
               <Route path="/auth/error" element={<AuthCallbackPage />} />
 
-              {/* Protected Routes */}
+              {/* Protected Routes with Layout */}
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <DashboardPage />
+                    <Layout>
+                      <DashboardPage />
+                    </Layout>
                   </ProtectedRoute>
                 }
               />
@@ -81,7 +84,9 @@ function App() {
                 path="/watchlist"
                 element={
                   <ProtectedRoute>
-                    <WatchlistPage />
+                    <Layout>
+                      <WatchlistPage />
+                    </Layout>
                   </ProtectedRoute>
                 }
               />
@@ -89,7 +94,9 @@ function App() {
                 path="/holdings"
                 element={
                   <ProtectedRoute>
-                    <HoldingsPage />
+                    <Layout>
+                      <HoldingsPage />
+                    </Layout>
                   </ProtectedRoute>
                 }
               />
@@ -97,7 +104,9 @@ function App() {
                 path="/transactions"
                 element={
                   <ProtectedRoute>
-                    <TransactionsPage />
+                    <Layout>
+                      <TransactionsPage />
+                    </Layout>
                   </ProtectedRoute>
                 }
               />
@@ -105,7 +114,9 @@ function App() {
                 path="/reports"
                 element={
                   <ProtectedRoute>
-                    <ReportsPage />
+                    <Layout>
+                      <ReportsPage />
+                    </Layout>
                   </ProtectedRoute>
                 }
               />
