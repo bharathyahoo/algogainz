@@ -95,16 +95,18 @@ router.get('/callback', async (req: Request, res: Response) => {
       throw new Error('JWT_SECRET not configured');
     }
 
-    const token = jwt.sign(
-      {
-        userId: user_id,
-        userName: user_name,
-        email: email,
-        kiteAccessToken: access_token
-      },
-      jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const payload = {
+      userId: user_id,
+      userName: user_name,
+      email: email,
+      kiteAccessToken: access_token
+    };
+
+    // JWT expiresIn can be a string (like '7d') or number (seconds)
+    // Using type assertion to bypass strict type checking
+    const token = jwt.sign(payload, jwtSecret, {
+      expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any
+    });
 
     // Redirect to frontend with token
     // In production, use a more secure method (httpOnly cookie)

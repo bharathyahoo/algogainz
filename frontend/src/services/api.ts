@@ -1,5 +1,6 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
-import { ApiResponse } from '../types';
+import axios, { AxiosError } from 'axios';
+import type { AxiosInstance } from 'axios';
+import type { ApiResponse } from '../types';
 
 /**
  * API Service

@@ -1,5 +1,5 @@
 import { apiService } from './api';
-import { User, ApiResponse } from '../types';
+import type { User } from '../types';
 
 /**
  * Authentication Service
