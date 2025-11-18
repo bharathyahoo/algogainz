@@ -11,6 +11,7 @@ import authRoutes from './routes/auth';
 import watchlistRoutes from './routes/watchlist';
 import instrumentsRoutes from './routes/instruments';
 import analysisRoutes from './routes/analysis';
+import tradingRoutes from './routes/trading';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -35,7 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/instruments', instrumentsRoutes);
 app.use('/api/analysis', analysisRoutes);
-// app.use('/api/trading', tradingRoutes);
+app.use('/api/trading', tradingRoutes);
 // app.use('/api/transactions', transactionsRoutes);
 // app.use('/api/holdings', holdingsRoutes);
 // app.use('/api/dashboard', dashboardRoutes);
