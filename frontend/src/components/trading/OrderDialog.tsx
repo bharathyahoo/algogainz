@@ -55,6 +55,7 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
   const [preview, setPreview] = useState<OrderPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [marketStatus, setMarketStatus] = useState<{ isOpen: boolean; message: string } | null>(null);
 
   const steps = ['Enter Details', 'Review & Confirm', 'Order Placed'];
 
@@ -62,10 +63,19 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
     if (open) {
       setActiveStep(0);
       setQuantity(1);
-      setOrderType('MARKET');
       setLimitPrice(currentPrice.toFixed(2));
       setPreview(null);
       setError('');
+
+      // Check market status
+      tradingService.getMarketStatus().then((status) => {
+        setMarketStatus(status);
+        // If market is closed, default to LIMIT order
+        setOrderType(status.isOpen ? 'MARKET' : 'LIMIT');
+      }).catch((err) => {
+        console.error('Failed to get market status:', err);
+        setOrderType('MARKET'); // Fallback to MARKET if check fails
+      });
     }
   }, [open, currentPrice]);
 
@@ -184,6 +194,18 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
         {/* Step 1: Enter Details */}
         {activeStep === 0 && (
           <Box>
+            {/* Market Status Warning */}
+            {marketStatus && !marketStatus.isOpen && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  Market is Currently Closed
+                </Typography>
+                <Typography variant="caption">
+                  {marketStatus.message}
+                </Typography>
+              </Alert>
+            )}
+
             <Typography variant="subtitle2" sx={{ mb: 2 }}>
               Current Price: ₹{currentPrice.toFixed(2)}
             </Typography>
@@ -204,9 +226,20 @@ const OrderDialog: React.FC<OrderDialogProps> = ({
                 value={orderType}
                 onChange={(e) => setOrderType(e.target.value as 'MARKET' | 'LIMIT')}
               >
-                <FormControlLabel value="MARKET" control={<Radio />} label="Market Order (Execute at current price)" />
+                <FormControlLabel
+                  value="MARKET"
+                  control={<Radio />}
+                  label="Market Order (Execute at current price)"
+                  disabled={marketStatus ? !marketStatus.isOpen : false}
+                />
                 <FormControlLabel value="LIMIT" control={<Radio />} label="Limit Order (Set your price)" />
               </RadioGroup>
+              {marketStatus && !marketStatus.isOpen && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                  Note: MARKET orders can only be placed during market hours (9:15 AM - 3:30 PM IST).
+                  LIMIT orders will be queued as After Market Orders (AMO).
+                </Typography>
+              )}
             </FormControl>
 
             {orderType === 'LIMIT' && (
