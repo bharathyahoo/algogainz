@@ -9,6 +9,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage';
 import DashboardPage from './pages/DashboardPage';
 import WatchlistPage from './pages/WatchlistPage';
 import HoldingsPage from './pages/HoldingsPage';
+import TransactionsPage from './pages/TransactionsPage';
 
 // Components
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -66,6 +67,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <HoldingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transactions"
+              element={
+                <ProtectedRoute>
+                  <TransactionsPage />
                 </ProtectedRoute>
               }
             />
