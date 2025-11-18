@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+// Import routes
+import authRoutes from './routes/auth';
+
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
@@ -24,8 +27,8 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// API routes will be added here
-// app.use('/api/auth', authRoutes);
+// API routes
+app.use('/api/auth', authRoutes);
 // app.use('/api/watchlist', watchlistRoutes);
 // app.use('/api/trading', tradingRoutes);
 // app.use('/api/transactions', transactionsRoutes);
