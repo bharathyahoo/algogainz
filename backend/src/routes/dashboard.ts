@@ -199,6 +199,7 @@ function calculateRealizedPnL(transactions: any[]): number {
     );
 
     let buyQueue = [...buys];
+    const buyRemainingQty = new Map<any, number>();
 
     sells.forEach((sell) => {
       let remainingQty = sell.quantity;
@@ -206,11 +207,12 @@ function calculateRealizedPnL(transactions: any[]): number {
       while (remainingQty > 0 && buyQueue.length > 0) {
         const buy = buyQueue[0];
 
-        if (buy.remainingQty === undefined) {
-          buy.remainingQty = buy.quantity;
+        if (!buyRemainingQty.has(buy)) {
+          buyRemainingQty.set(buy, buy.quantity);
         }
 
-        const matchQty = Math.min(remainingQty, buy.remainingQty);
+        const buyRemaining = buyRemainingQty.get(buy)!;
+        const matchQty = Math.min(remainingQty, buyRemaining);
 
         // Calculate proportional buy cost and sell proceeds
         const buyCost = (Math.abs(buy.netAmount) / buy.quantity) * matchQty;
@@ -221,10 +223,10 @@ function calculateRealizedPnL(transactions: any[]): number {
 
         totalRealizedPnL += pnl;
 
-        buy.remainingQty -= matchQty;
+        buyRemainingQty.set(buy, buyRemaining - matchQty);
         remainingQty -= matchQty;
 
-        if (buy.remainingQty <= 0) {
+        if (buyRemainingQty.get(buy)! <= 0) {
           buyQueue.shift();
         }
       }
@@ -257,6 +259,7 @@ function calculateCompletedTrades(transactions: any[]): any[] {
     );
 
     let buyQueue = [...buys];
+    const buyRemainingQty = new Map<any, number>();
 
     sells.forEach((sell) => {
       let remainingQty = sell.quantity;
@@ -264,11 +267,12 @@ function calculateCompletedTrades(transactions: any[]): any[] {
       while (remainingQty > 0 && buyQueue.length > 0) {
         const buy = buyQueue[0];
 
-        if (buy.remainingQty === undefined) {
-          buy.remainingQty = buy.quantity;
+        if (!buyRemainingQty.has(buy)) {
+          buyRemainingQty.set(buy, buy.quantity);
         }
 
-        const matchQty = Math.min(remainingQty, buy.remainingQty);
+        const buyRemaining = buyRemainingQty.get(buy)!;
+        const matchQty = Math.min(remainingQty, buyRemaining);
 
         // Calculate proportional costs
         const buyCost = (Math.abs(buy.netAmount) / buy.quantity) * matchQty;
@@ -285,10 +289,10 @@ function calculateCompletedTrades(transactions: any[]): any[] {
           pnl,
         });
 
-        buy.remainingQty -= matchQty;
+        buyRemainingQty.set(buy, buyRemaining - matchQty);
         remainingQty -= matchQty;
 
-        if (buy.remainingQty <= 0) {
+        if (buyRemainingQty.get(buy)! <= 0) {
           buyQueue.shift();
         }
       }
@@ -366,38 +370,34 @@ function calculateRealizedPnLForStock(transactions: any[]): number {
   let buyQueue = [...buys];
   let totalPnL = 0;
 
+  // Use a Map to track remaining quantities without modifying original objects
+  const buyRemainingQty = new Map<any, number>();
+
   sells.forEach((sell) => {
     let remainingQty = sell.quantity;
-    console.log(`Processing sell - remainingQty: ${remainingQty}, type: ${typeof remainingQty}`);
 
     while (remainingQty > 0 && buyQueue.length > 0) {
       const buy = buyQueue[0];
 
-      console.log(`BEFORE SET - buy.quantity: ${buy.quantity}, buy.remainingQty: ${buy.remainingQty}`);
-
-      if (buy.remainingQty === undefined) {
-        buy.remainingQty = buy.quantity;
+      // Initialize remaining quantity for this buy if not yet tracked
+      if (!buyRemainingQty.has(buy)) {
+        buyRemainingQty.set(buy, buy.quantity);
       }
 
-      console.log(`AFTER SET - buy.quantity: ${buy.quantity}, buy.remainingQty: ${buy.remainingQty}`);
-      console.log(`Buy remainingQty: ${buy.remainingQty}, type: ${typeof buy.remainingQty}`);
-      console.log(`Sell remainingQty: ${remainingQty}, type: ${typeof remainingQty}`);
-
-      const matchQty = Math.min(remainingQty, buy.remainingQty);
-      console.log(`Math.min(${remainingQty}, ${buy.remainingQty}) = ${matchQty}`);
+      const buyRemaining = buyRemainingQty.get(buy)!;
+      const matchQty = Math.min(remainingQty, buyRemaining);
 
       const buyCost = (Math.abs(buy.netAmount) / buy.quantity) * matchQty;
       const sellProceeds = (Math.abs(sell.netAmount) / sell.quantity) * matchQty;
       const pnl = sellProceeds - buyCost;
 
-      console.log(`Match: ${matchQty} shares, BuyCost: ${buyCost}, SellProceeds: ${sellProceeds}, P&L: ${pnl}`);
-
       totalPnL += pnl;
 
-      buy.remainingQty -= matchQty;
+      // Update tracking map instead of modifying object
+      buyRemainingQty.set(buy, buyRemaining - matchQty);
       remainingQty -= matchQty;
 
-      if (buy.remainingQty <= 0) {
+      if (buyRemainingQty.get(buy)! <= 0) {
         buyQueue.shift();
       }
     }
