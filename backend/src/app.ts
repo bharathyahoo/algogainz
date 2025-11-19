@@ -1,10 +1,28 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
+import compression from 'compression';
 import dotenv from 'dotenv';
 
-// Load environment variables
+// Load environment variables first
 dotenv.config();
+
+// Import security configuration
+import {
+  helmetConfig,
+  corsOptions,
+  apiLimiter,
+  authLimiter,
+  tradingLimiter,
+  reportLimiter,
+  requestSizeLimits,
+  trustProxy,
+  securityHeaders,
+  validateEnvironment,
+  sanitizeErrorResponse,
+} from './config/security';
+
+// Validate environment variables
+validateEnvironment();
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -20,44 +38,42 @@ import reportsRoutes from './routes/reports';
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(helmet()); // Security headers
-app.use(cors()); // Enable CORS
-app.use(express.json()); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+// Trust proxy (for apps behind reverse proxies like Nginx, Cloudflare)
+app.set('trust proxy', trustProxy);
 
-// Health check endpoint
+// Security Middleware
+app.use(helmetConfig); // Security headers (CSP, HSTS, etc.)
+app.use(cors(corsOptions)); // CORS with whitelist
+app.use(compression()); // Compress responses
+app.use(securityHeaders); // Custom security headers
+
+// Body parsing middleware with size limits
+app.use(express.json({ limit: requestSizeLimits.json }));
+app.use(express.urlencoded({ extended: true, limit: requestSizeLimits.urlencoded }));
+
+// General API rate limiting
+app.use('/api/', apiLimiter);
+
+// Health check endpoint (no auth required)
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
     message: 'AlgoGainz API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
-// API routes
-app.use('/api/auth', authRoutes);
+// API routes with specific rate limiters
+app.use('/api/auth', authLimiter, authRoutes); // Strict rate limit for auth
+app.use('/api/trading', tradingLimiter, tradingRoutes); // Trading-specific rate limit
+app.use('/api/reports', reportLimiter, reportsRoutes); // Report generation rate limit
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/instruments', instrumentsRoutes);
 app.use('/api/analysis', analysisRoutes);
-app.use('/api/trading', tradingRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/holdings', holdingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/reports', reportsRoutes);
-
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: any) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    error: {
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'An unexpected error occurred',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    }
-  });
-});
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -65,16 +81,62 @@ app.use((req: Request, res: Response) => {
     success: false,
     error: {
       code: 'NOT_FOUND',
-      message: 'Route not found'
-    }
+      message: 'Route not found',
+      path: req.path,
+    },
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 AlgoGainz API server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+// Global error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  // Log error for debugging
+  console.error('[ERROR]', {
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    path: req.path,
+    error: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+  });
+
+  // Determine status code
+  const statusCode = err.statusCode || err.status || 500;
+
+  // Send sanitized error response
+  res.status(statusCode).json({
+    success: false,
+    error: {
+      code: err.code || 'INTERNAL_SERVER_ERROR',
+      message: err.message || 'An unexpected error occurred',
+      ...(process.env.NODE_ENV === 'development' && {
+        details: sanitizeErrorResponse(err),
+      }),
+    },
+  });
 });
+
+// Graceful shutdown handler
+process.on('SIGTERM', () => {
+  console.log('⚠️  SIGTERM signal received: closing HTTP server');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('⚠️  SIGINT signal received: closing HTTP server');
+  process.exit(0);
+});
+
+// Start server only if not in test mode
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log('🚀 AlgoGainz API Server Started');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📡 Port: ${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+    console.log(`🔒 Security: Helmet, CORS, Rate Limiting ✓`);
+    console.log(`📦 Compression: Enabled ✓`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  });
+}
 
 export default app;
