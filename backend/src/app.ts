@@ -24,6 +24,12 @@ import {
 // Validate environment variables
 validateEnvironment();
 
+// Import AI configuration
+import { validateAIConfig } from './config/ai';
+
+// Validate AI configuration
+validateAIConfig();
+
 // Import routes
 import authRoutes from './routes/auth';
 import watchlistRoutes from './routes/watchlist';
@@ -34,6 +40,7 @@ import transactionsRoutes from './routes/transactions';
 import holdingsRoutes from './routes/holdings';
 import dashboardRoutes from './routes/dashboard';
 import reportsRoutes from './routes/reports';
+import aiRoutes from './routes/ai';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -68,6 +75,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/auth', authLimiter, authRoutes); // Strict rate limit for auth
 app.use('/api/trading', tradingLimiter, tradingRoutes); // Trading-specific rate limit
 app.use('/api/reports', reportLimiter, reportsRoutes); // Report generation rate limit
+app.use('/api/ai', aiRoutes); // AI-powered features
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/instruments', instrumentsRoutes);
 app.use('/api/analysis', analysisRoutes);
