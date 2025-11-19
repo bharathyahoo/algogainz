@@ -5,8 +5,10 @@
 // User types
 export interface User {
   userId: string;
-  userName: string;
+  userName?: string;
   email?: string;
+  kiteUserId?: string;
+  name?: string;
 }
 
 // Auth types
