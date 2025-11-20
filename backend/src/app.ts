@@ -46,6 +46,7 @@ import holdingsRoutes from './routes/holdings';
 import dashboardRoutes from './routes/dashboard';
 import reportsRoutes from './routes/reports';
 import aiRoutes from './routes/ai';
+import backtestRoutes from './routes/backtest';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
@@ -102,6 +103,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/auth', authLimiter, authRoutes); // Strict rate limit for auth
 app.use('/api/trading', tradingLimiter, tradingRoutes); // Trading-specific rate limit
 app.use('/api/reports', reportLimiter, reportsRoutes); // Report generation rate limit
+app.use('/api/backtest', backtestRoutes); // Backtesting with built-in rate limiting
 app.use('/api/ai', aiRoutes); // AI-powered features
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/instruments', instrumentsRoutes);
