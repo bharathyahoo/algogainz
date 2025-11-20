@@ -6,6 +6,7 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { corsOptions } from '../config/security';
+import axios from 'axios';
 
 interface ConnectedClient {
   userId: string;
@@ -14,10 +15,21 @@ interface ConnectedClient {
   connectedAt: Date;
 }
 
+interface PriceData {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+  timestamp: string;
+}
+
 class WebSocketServer {
   private io: SocketIOServer | null = null;
   private connectedClients: Map<string, ConnectedClient> = new Map();
   private symbolSubscriptions: Map<string, Set<string>> = new Map(); // symbol -> Set<socketId>
+  private priceUpdateInterval: NodeJS.Timeout | null = null;
+  private lastPrices: Map<string, number> = new Map(); // symbol -> last price
 
   /**
    * Initialize WebSocket server
@@ -35,7 +47,73 @@ class WebSocketServer {
     });
 
     this.setupEventHandlers();
+    this.startPriceUpdates();
     console.log('✅ WebSocket Server initialized');
+  }
+
+  /**
+   * Start periodic price updates for subscribed symbols
+   */
+  private startPriceUpdates(): void {
+    // Update prices every 2 seconds
+    this.priceUpdateInterval = setInterval(() => {
+      this.fetchAndBroadcastPrices();
+    }, 2000);
+
+    console.log('📊 Price update service started (2s interval)');
+  }
+
+  /**
+   * Fetch prices and broadcast to subscribers
+   */
+  private async fetchAndBroadcastPrices(): Promise<void> {
+    const symbols = Array.from(this.symbolSubscriptions.keys());
+
+    if (symbols.length === 0) {
+      return; // No subscriptions, skip
+    }
+
+    try {
+      // For each subscribed symbol, generate mock price data
+      // In production, this would fetch from Kite API or use Kite WebSocket
+      for (const symbol of symbols) {
+        const priceData = this.generateMockPriceData(symbol);
+        this.broadcastPriceUpdate(symbol, priceData);
+      }
+    } catch (error) {
+      console.error('Error fetching prices:', error);
+    }
+  }
+
+  /**
+   * Generate mock price data for testing
+   * TODO: Replace with actual Kite API integration
+   */
+  private generateMockPriceData(symbol: string): PriceData {
+    // Get last price or generate a random starting price
+    let lastPrice = this.lastPrices.get(symbol);
+    if (!lastPrice) {
+      // Generate random starting price between 100 and 5000
+      lastPrice = Math.random() * 4900 + 100;
+      this.lastPrices.set(symbol, lastPrice);
+    }
+
+    // Simulate price movement (-1% to +1%)
+    const changePercent = (Math.random() - 0.5) * 2;
+    const change = lastPrice * (changePercent / 100);
+    const newPrice = lastPrice + change;
+
+    // Update last price
+    this.lastPrices.set(symbol, newPrice);
+
+    return {
+      symbol,
+      price: newPrice,
+      change,
+      changePercent,
+      volume: Math.floor(Math.random() * 1000000),
+      timestamp: new Date().toISOString(),
+    };
   }
 
   /**
@@ -271,6 +349,22 @@ class WebSocketServer {
         0
       ),
     };
+  }
+
+  /**
+   * Shutdown and cleanup
+   */
+  shutdown(): void {
+    if (this.priceUpdateInterval) {
+      clearInterval(this.priceUpdateInterval);
+      this.priceUpdateInterval = null;
+      console.log('📊 Price update service stopped');
+    }
+
+    if (this.io) {
+      this.io.close();
+      console.log('✅ WebSocket Server shut down');
+    }
   }
 }
 
