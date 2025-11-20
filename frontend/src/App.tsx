@@ -8,6 +8,7 @@ import { store } from './store';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import OfflineBanner from './components/common/OfflineBanner';
 import Layout from './components/common/Layout';
+import { NotificationPermissionHandler } from './components/common/NotificationPermissionHandler';
 import { useWebSocketConnection } from './hooks/useWebSocket';
 
 // Lazy-loaded pages (code splitting)
@@ -69,6 +70,9 @@ function App() {
           <WebSocketProvider>
             {/* Offline Detection Banner */}
             <OfflineBanner />
+
+            {/* Notification Permission Handler */}
+            <NotificationPermissionHandler />
 
           {/* Routes with Suspense for lazy loading */}
           <Suspense fallback={<PageLoader />}>

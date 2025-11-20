@@ -15,9 +15,11 @@ import ExitStrategyDialog from '../components/holdings/ExitStrategyDialog';
 import OrderDialog from '../components/trading/OrderDialog';
 import { ConnectionStatusIndicator } from '../components/common/ConnectionStatus';
 import { MarketStatusBanner } from '../components/common/MarketStatusBanner';
+import { NotificationSettings } from '../components/common/NotificationSettings';
 import { AlertList } from '../components/holdings/AlertList';
 import { usePriceUpdates, useOnPriceUpdate, useOnAlert } from '../hooks/useWebSocket';
 import { websocketService, type Alert as AlertType } from '../services/websocketService';
+import { notificationService } from '../services/notificationService';
 
 const HoldingsPage: React.FC = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -64,14 +66,14 @@ const HoldingsPage: React.FC = () => {
         return prevAlerts;
       });
 
-      // Show browser notification if supported
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('AlgoGainz Alert', {
-          body: newAlert.message,
-          icon: '/logo192.png',
-          badge: '/logo192.png',
-        });
-      }
+      // Show browser notification using notification service
+      notificationService.showAlertNotification(
+        newAlert.type,
+        newAlert.stockSymbol,
+        newAlert.companyName,
+        newAlert.message,
+        newAlert
+      );
     }, [])
   );
 
@@ -168,7 +170,8 @@ const HoldingsPage: React.FC = () => {
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
             My Holdings
           </Typography>
-          <Box sx={{ ml: 'auto' }}>
+          <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
+            <NotificationSettings />
             <ConnectionStatusIndicator />
           </Box>
         </Box>
