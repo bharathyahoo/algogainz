@@ -24,12 +24,21 @@ interface MarketStatusUpdate {
   timestamp: string;
 }
 
-interface Alert {
-  type: 'PROFIT_TARGET' | 'STOP_LOSS' | 'PRICE_ALERT';
-  symbol: string;
-  message: string;
+export interface Alert {
+  id: string;
+  userId: string;
+  holdingId: string;
+  stockSymbol: string;
+  companyName: string;
+  type: 'PROFIT_TARGET' | 'STOP_LOSS';
+  targetPrice: number;
   currentPrice: number;
-  targetPrice?: number;
+  targetPercent: number;
+  quantity: number;
+  avgBuyPrice: number;
+  unrealizedPnL: number;
+  unrealizedPnLPct: number;
+  message: string;
   timestamp: string;
 }
 
@@ -293,6 +302,88 @@ class WebSocketService {
    */
   getSubscribedSymbols(): string[] {
     return Array.from(this.subscribedSymbols);
+  }
+
+  /**
+   * Dismiss an alert
+   */
+  dismissAlert(holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS'): void {
+    if (!this.socket?.connected) {
+      console.warn('[WebSocket] Cannot dismiss alert: not connected');
+      return;
+    }
+
+    this.socket.emit('dismissAlert', { holdingId, type });
+    console.log(`[WebSocket] Dismissing alert for holding ${holdingId} (${type})`);
+  }
+
+  /**
+   * Reset exit strategy alerts
+   */
+  resetExitStrategy(holdingId: string): void {
+    if (!this.socket?.connected) {
+      console.warn('[WebSocket] Cannot reset exit strategy: not connected');
+      return;
+    }
+
+    this.socket.emit('resetExitStrategy', { holdingId });
+    console.log(`[WebSocket] Resetting exit strategy for holding ${holdingId}`);
+  }
+
+  /**
+   * Get active alerts
+   */
+  getActiveAlerts(): void {
+    if (!this.socket?.connected) {
+      console.warn('[WebSocket] Cannot get active alerts: not connected');
+      return;
+    }
+
+    this.socket.emit('getActiveAlerts');
+    console.log('[WebSocket] Requesting active alerts');
+  }
+
+  /**
+   * Listen for active alerts response
+   */
+  onActiveAlerts(callback: (alerts: Alert[]) => void): () => void {
+    if (!this.socket) return () => {};
+
+    const handler = (data: { alerts: Alert[] }) => {
+      callback(data.alerts);
+    };
+
+    this.socket.on('activeAlerts', handler);
+
+    return () => {
+      this.socket?.off('activeAlerts', handler);
+    };
+  }
+
+  /**
+   * Listen for alert dismissal confirmation
+   */
+  onAlertDismissed(callback: (data: { success: boolean; holdingId: string; type: string }) => void): () => void {
+    if (!this.socket) return () => {};
+
+    this.socket.on('alertDismissed', callback);
+
+    return () => {
+      this.socket?.off('alertDismissed', callback);
+    };
+  }
+
+  /**
+   * Listen for exit strategy reset confirmation
+   */
+  onExitStrategyReset(callback: (data: { success: boolean; holdingId: string }) => void): () => void {
+    if (!this.socket) return () => {};
+
+    this.socket.on('exitStrategyReset', callback);
+
+    return () => {
+      this.socket?.off('exitStrategyReset', callback);
+    };
   }
 }
 

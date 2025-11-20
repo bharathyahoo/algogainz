@@ -15,7 +15,11 @@ import ExitStrategyDialog from '../components/holdings/ExitStrategyDialog';
 import OrderDialog from '../components/trading/OrderDialog';
 import { ConnectionStatusIndicator } from '../components/common/ConnectionStatus';
 import { MarketStatusBanner } from '../components/common/MarketStatusBanner';
-import { usePriceUpdates, useOnPriceUpdate } from '../hooks/useWebSocket';
+import { NotificationSettings } from '../components/common/NotificationSettings';
+import { AlertList } from '../components/holdings/AlertList';
+import { usePriceUpdates, useOnPriceUpdate, useOnAlert } from '../hooks/useWebSocket';
+import { websocketService, type Alert as AlertType } from '../services/websocketService';
+import { notificationService } from '../services/notificationService';
 
 const HoldingsPage: React.FC = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -24,9 +28,11 @@ const HoldingsPage: React.FC = () => {
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
   const [exitStrategyDialogOpen, setExitStrategyDialogOpen] = useState(false);
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
+  const [alerts, setAlerts] = useState<AlertType[]>([]);
 
   useEffect(() => {
     loadHoldings();
+    loadActiveAlerts();
   }, []);
 
   const loadHoldings = async () => {
@@ -41,6 +47,79 @@ const HoldingsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const loadActiveAlerts = () => {
+    // Request active alerts from server
+    websocketService.getActiveAlerts();
+  };
+
+  // Listen for active alerts response
+  useEffect(() => {
+    const unsubscribe = websocketService.onActiveAlerts((activeAlerts) => {
+      console.log('[HoldingsPage] Received active alerts:', activeAlerts);
+
+      // Filter out dismissed alerts
+      const filteredAlerts = activeAlerts.filter((alert) => {
+        return !isAlertDismissed(alert.holdingId, alert.type);
+      });
+
+      setAlerts(filteredAlerts);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Check if an alert has been dismissed (stored in localStorage)
+  const isAlertDismissed = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS'): boolean => {
+    const key = `algogainz_dismissed_alert_${holdingId}_${type}`;
+    return localStorage.getItem(key) === 'true';
+  };
+
+  // Mark an alert as dismissed in localStorage
+  const markAlertDismissed = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS') => {
+    const key = `algogainz_dismissed_alert_${holdingId}_${type}`;
+    localStorage.setItem(key, 'true');
+  };
+
+  // Clear dismissed status (when exit strategy is updated)
+  const clearDismissedAlert = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS') => {
+    const key = `algogainz_dismissed_alert_${holdingId}_${type}`;
+    localStorage.removeItem(key);
+  };
+
+  // Listen for new alerts
+  useOnAlert(
+    useCallback((newAlert: AlertType) => {
+      console.log('[HoldingsPage] New alert received:', newAlert);
+
+      // Check if this alert was previously dismissed
+      const isDismissed = isAlertDismissed(newAlert.holdingId, newAlert.type);
+      if (isDismissed) {
+        console.log('[HoldingsPage] Alert was previously dismissed, ignoring');
+        return;
+      }
+
+      // Add to alerts list if not already present
+      setAlerts((prevAlerts) => {
+        const exists = prevAlerts.some(
+          (a) => a.holdingId === newAlert.holdingId && a.type === newAlert.type
+        );
+        if (!exists) {
+          return [...prevAlerts, newAlert];
+        }
+        return prevAlerts;
+      });
+
+      // Show browser notification using notification service
+      notificationService.showAlertNotification(
+        newAlert.type,
+        newAlert.stockSymbol,
+        newAlert.companyName,
+        newAlert.message,
+        newAlert
+      );
+    }, [])
+  );
 
   // Subscribe to WebSocket price updates for all holdings
   const holdingSymbols = holdings.map((h) => h.stockSymbol);
@@ -90,12 +169,41 @@ const HoldingsPage: React.FC = () => {
   };
 
   const handleExitStrategySuccess = () => {
+    // Clear dismissed status for this holding (allows alerts to trigger again)
+    if (selectedHolding) {
+      clearDismissedAlert(selectedHolding.id, 'PROFIT_TARGET');
+      clearDismissedAlert(selectedHolding.id, 'STOP_LOSS');
+    }
+
     loadHoldings(); // Refresh holdings after setting exit strategy
+    loadActiveAlerts(); // Reload alerts to show new ones
   };
 
   const handleSellSuccess = () => {
     loadHoldings(); // Refresh holdings after selling
     setSellDialogOpen(false);
+  };
+
+  const handleDismissAlert = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS') => {
+    // Mark as dismissed in localStorage (prevents re-appearing)
+    markAlertDismissed(holdingId, type);
+
+    // Remove from local state
+    setAlerts((prevAlerts) =>
+      prevAlerts.filter((a) => !(a.holdingId === holdingId && a.type === type))
+    );
+
+    // Send dismissal to server (keeps database flag as true)
+    websocketService.dismissAlert(holdingId, type);
+  };
+
+  const handleQuickSell = (alert: AlertType) => {
+    // Find the holding for this alert
+    const holding = holdings.find((h) => h.id === alert.holdingId);
+    if (holding) {
+      setSelectedHolding(holding);
+      setSellDialogOpen(true);
+    }
   };
 
   // Calculate portfolio totals
@@ -116,7 +224,8 @@ const HoldingsPage: React.FC = () => {
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
             My Holdings
           </Typography>
-          <Box sx={{ ml: 'auto' }}>
+          <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>
+            <NotificationSettings />
             <ConnectionStatusIndicator />
           </Box>
         </Box>
@@ -135,6 +244,13 @@ const HoldingsPage: React.FC = () => {
           manually recorded. Direct Zerodha Kite trades are NOT automatically synchronized.
         </Typography>
       </Alert>
+
+      {/* Active Alerts */}
+      <AlertList
+        alerts={alerts}
+        onDismiss={handleDismissAlert}
+        onQuickSell={handleQuickSell}
+      />
 
       {/* Portfolio Summary */}
       {holdings.length > 0 && (

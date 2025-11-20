@@ -8,6 +8,7 @@ import { Server as HTTPServer } from 'http';
 import { corsOptions } from '../config/security';
 import axios from 'axios';
 import { getCurrentMarketStatus } from '../utils/marketHours';
+import { alertService } from '../services/alertService';
 
 interface ConnectedClient {
   userId: string;
@@ -80,9 +81,62 @@ class WebSocketServer {
       for (const symbol of symbols) {
         const priceData = this.generateMockPriceData(symbol);
         this.broadcastPriceUpdate(symbol, priceData);
+
+        // Update holding prices for all users who have this stock
+        await this.updateHoldingPricesForSymbol(symbol, priceData.price);
       }
+
+      // Check for exit strategy alerts after updating all prices
+      await this.checkAndBroadcastAlerts();
     } catch (error) {
       console.error('Error fetching prices:', error);
+    }
+  }
+
+  /**
+   * Update holding prices for all users holding a specific symbol
+   */
+  private async updateHoldingPricesForSymbol(symbol: string, price: number): Promise<void> {
+    try {
+      // Get all unique user IDs that have subscribed to this symbol
+      const subscribers = this.symbolSubscriptions.get(symbol);
+      if (!subscribers) return;
+
+      const userIds = new Set<string>();
+      subscribers.forEach((socketId) => {
+        const client = this.connectedClients.get(socketId);
+        if (client) {
+          userIds.add(client.userId);
+        }
+      });
+
+      // Update holding price for each user
+      for (const userId of userIds) {
+        await alertService.updateHoldingPrice(userId, symbol, price);
+      }
+    } catch (error) {
+      console.error(`Error updating holding prices for ${symbol}:`, error);
+    }
+  }
+
+  /**
+   * Check exit strategies and broadcast alerts
+   */
+  private async checkAndBroadcastAlerts(): Promise<void> {
+    try {
+      const alerts = await alertService.checkExitStrategies();
+
+      if (alerts.length > 0) {
+        console.log(`🚨 ${alerts.length} alert(s) triggered`);
+
+        // Send each alert to the respective user
+        for (const alert of alerts) {
+          this.sendAlertToUser(alert.userId, alert);
+          console.log(`📢 Alert sent to user ${alert.userId}: ${alert.type} for ${alert.stockSymbol}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking and broadcasting alerts:', error);
     }
   }
 
@@ -144,6 +198,21 @@ class WebSocketServer {
       // Handle portfolio updates request
       socket.on('requestPortfolioUpdate', () => {
         this.handlePortfolioUpdateRequest(socket);
+      });
+
+      // Handle alert dismissal
+      socket.on('dismissAlert', (data: { holdingId: string; type: 'PROFIT_TARGET' | 'STOP_LOSS' }) => {
+        this.handleDismissAlert(socket, data);
+      });
+
+      // Handle exit strategy reset
+      socket.on('resetExitStrategy', (data: { holdingId: string }) => {
+        this.handleResetExitStrategy(socket, data);
+      });
+
+      // Handle get active alerts request
+      socket.on('getActiveAlerts', () => {
+        this.handleGetActiveAlerts(socket);
       });
 
       // Handle disconnection
@@ -261,6 +330,67 @@ class WebSocketServer {
     socket.emit('portfolioUpdate', {
       message: 'Portfolio update feature coming soon',
     });
+  }
+
+  /**
+   * Handle alert dismissal
+   */
+  private async handleDismissAlert(
+    socket: Socket,
+    data: { holdingId: string; type: 'PROFIT_TARGET' | 'STOP_LOSS' }
+  ): Promise<void> {
+    const client = this.connectedClients.get(socket.id);
+    if (!client) return;
+
+    try {
+      await alertService.dismissAlert(data.holdingId, data.type);
+      socket.emit('alertDismissed', {
+        success: true,
+        holdingId: data.holdingId,
+        type: data.type,
+      });
+      console.log(`✅ Alert dismissed for holding ${data.holdingId} (${data.type})`);
+    } catch (error) {
+      console.error('Error dismissing alert:', error);
+      socket.emit('error', { message: 'Failed to dismiss alert' });
+    }
+  }
+
+  /**
+   * Handle exit strategy reset
+   */
+  private async handleResetExitStrategy(socket: Socket, data: { holdingId: string }): Promise<void> {
+    const client = this.connectedClients.get(socket.id);
+    if (!client) return;
+
+    try {
+      await alertService.resetAlerts(data.holdingId);
+      socket.emit('exitStrategyReset', {
+        success: true,
+        holdingId: data.holdingId,
+      });
+      console.log(`✅ Exit strategy reset for holding ${data.holdingId}`);
+    } catch (error) {
+      console.error('Error resetting exit strategy:', error);
+      socket.emit('error', { message: 'Failed to reset exit strategy' });
+    }
+  }
+
+  /**
+   * Handle get active alerts request
+   */
+  private async handleGetActiveAlerts(socket: Socket): Promise<void> {
+    const client = this.connectedClients.get(socket.id);
+    if (!client) return;
+
+    try {
+      const alerts = await alertService.getActiveAlerts(client.userId);
+      socket.emit('activeAlerts', { alerts });
+      console.log(`📊 Sent ${alerts.length} active alerts to user ${client.userId}`);
+    } catch (error) {
+      console.error('Error getting active alerts:', error);
+      socket.emit('error', { message: 'Failed to get active alerts' });
+    }
   }
 
   /**
