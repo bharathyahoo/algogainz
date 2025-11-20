@@ -139,6 +139,8 @@ class WebSocketService {
     });
 
     this.socket.on('marketStatus', (data: MarketStatusUpdate) => {
+      console.log('[WebSocket] Received marketStatus event:', data);
+      console.log('[WebSocket] Number of marketStatus callbacks:', this.marketStatusCallbacks.size);
       this.marketStatusCallbacks.forEach((callback) => callback(data));
     });
 

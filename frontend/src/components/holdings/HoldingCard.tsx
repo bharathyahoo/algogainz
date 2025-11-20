@@ -9,7 +9,6 @@ import {
   Stack,
   IconButton,
   Tooltip,
-  CardActionArea,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -43,16 +42,18 @@ const HoldingCard: React.FC<HoldingCardProps> = ({ holding, onSetExitStrategy, o
 
   return (
     <Card sx={{ height: '100%', position: 'relative' }}>
-      {/* Clickable area for drill-down */}
-      <CardActionArea onClick={handleViewTransactions}>
-        <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
-          <Tooltip title="View transactions">
-            <IconButton size="small" sx={{ bgcolor: 'background.paper' }}>
-              <Receipt fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      </CardActionArea>
+      {/* View transactions button - positioned absolutely */}
+      <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+        <Tooltip title="View transactions">
+          <IconButton
+            size="small"
+            sx={{ bgcolor: 'background.paper' }}
+            onClick={handleViewTransactions}
+          >
+            <Receipt fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
       <CardContent>
         {/* Header */}

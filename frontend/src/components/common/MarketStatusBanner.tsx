@@ -18,6 +18,7 @@ export const MarketStatusBanner: React.FC = () => {
   useEffect(() => {
     // Subscribe to market status updates
     const unsubscribe = websocketService.onMarketStatus((data) => {
+      console.log('[MarketStatusBanner] Received market status:', data);
       setMarketStatus(data.status);
       // Message will come from backend in future updates
     });
@@ -25,7 +26,12 @@ export const MarketStatusBanner: React.FC = () => {
     return unsubscribe;
   }, []);
 
-  if (!marketStatus) return null;
+  console.log('[MarketStatusBanner] Current marketStatus state:', marketStatus);
+
+  if (!marketStatus) {
+    console.log('[MarketStatusBanner] Not rendering - marketStatus is null');
+    return null;
+  }
 
   const getStatusConfig = () => {
     switch (marketStatus) {
