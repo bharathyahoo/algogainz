@@ -30,7 +30,9 @@ const HoldingsPage: React.FC = () => {
 
   useEffect(() => {
     loadHoldings();
-    loadActiveAlerts();
+    // Note: We don't load active alerts on mount anymore
+    // Alerts are only shown when they trigger in real-time via WebSocket
+    // This prevents dismissed alerts from re-appearing on page refresh
   }, []);
 
   const loadHoldings = async () => {
@@ -45,21 +47,6 @@ const HoldingsPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const loadActiveAlerts = () => {
-    // Request active alerts from server
-    websocketService.getActiveAlerts();
-  };
-
-  // Listen for active alerts response
-  useEffect(() => {
-    const unsubscribe = websocketService.onActiveAlerts((activeAlerts) => {
-      console.log('[HoldingsPage] Received active alerts:', activeAlerts);
-      setAlerts(activeAlerts);
-    });
-
-    return unsubscribe;
-  }, []);
 
   // Listen for new alerts
   useOnAlert(

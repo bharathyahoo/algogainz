@@ -281,18 +281,15 @@ export class AlertService {
 
   /**
    * Dismiss a specific alert
+   * Note: This keeps the trigger flag as TRUE (already triggered) to prevent re-triggering.
+   * Use resetAlerts() if you want to allow the alert to trigger again.
    */
   async dismissAlert(holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS'): Promise<void> {
     try {
-      const updateData =
-        type === 'PROFIT_TARGET'
-          ? { profitAlertTriggered: false }
-          : { stopLossAlertTriggered: false };
-
-      await prisma.exitStrategy.updateMany({
-        where: { holdingId },
-        data: updateData,
-      });
+      // Do NOT reset the trigger flag - it should remain true to prevent re-triggering
+      // This is just a client-side UI dismissal
+      // The flag stays true meaning "this alert has already been triggered"
+      console.log(`Alert dismissed (keeping trigger flag active): ${holdingId} - ${type}`);
     } catch (error) {
       console.error('Error dismissing alert:', error);
     }
