@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import type { Holding } from '../../services/holdingsService';
+import { CompactPriceDisplay } from '../common/PriceDisplay';
 
 interface HoldingCardProps {
   holding: Holding;
@@ -34,8 +35,6 @@ const HoldingCard: React.FC<HoldingCardProps> = ({ holding, onSetExitStrategy, o
   const hasExitStrategy = !!holding.exitStrategy;
   const isProfit = (holding.unrealizedPnL || 0) >= 0;
   const currentPrice = holding.currentPrice || holding.avgBuyPrice;
-  const hasDayChange = holding.dayChange !== null && holding.dayChange !== undefined;
-  const dayChangeIsPositive = (holding.dayChange || 0) >= 0;
 
   const handleViewTransactions = () => {
     // Navigate to transactions page with pre-filtered symbol
@@ -81,32 +80,11 @@ const HoldingCard: React.FC<HoldingCardProps> = ({ holding, onSetExitStrategy, o
             <Typography variant="body2" color="text.secondary">
               Current Price
             </Typography>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                ₹{currentPrice.toFixed(2)}
-              </Typography>
-              {/* Day's Change */}
-              {hasDayChange && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end' }}>
-                  {dayChangeIsPositive ? (
-                    <TrendingUp sx={{ fontSize: 14, color: 'success.main' }} />
-                  ) : (
-                    <TrendingDown sx={{ fontSize: 14, color: 'error.main' }} />
-                  )}
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: dayChangeIsPositive ? 'success.main' : 'error.main',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {dayChangeIsPositive ? '+' : ''}₹{(holding.dayChange || 0).toFixed(2)} (
-                    {dayChangeIsPositive ? '+' : ''}
-                    {(holding.dayChangePct || 0).toFixed(2)}%)
-                  </Typography>
-                </Box>
-              )}
-            </Box>
+            <CompactPriceDisplay
+              price={currentPrice}
+              changePercent={holding.dayChangePct || 0}
+              animate={true}
+            />
           </Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="body2" color="text.secondary">

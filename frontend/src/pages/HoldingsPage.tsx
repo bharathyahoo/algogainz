@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -13,6 +13,9 @@ import { holdingsService, type Holding } from '../services/holdingsService';
 import HoldingCard from '../components/holdings/HoldingCard';
 import ExitStrategyDialog from '../components/holdings/ExitStrategyDialog';
 import OrderDialog from '../components/trading/OrderDialog';
+import { ConnectionStatusIndicator } from '../components/common/ConnectionStatus';
+import { MarketStatusBanner } from '../components/common/MarketStatusBanner';
+import { usePriceUpdates, useOnPriceUpdate } from '../hooks/useWebSocket';
 
 const HoldingsPage: React.FC = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -38,6 +41,43 @@ const HoldingsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Subscribe to WebSocket price updates for all holdings
+  const holdingSymbols = holdings.map((h) => h.stockSymbol);
+  usePriceUpdates(holdingSymbols, holdings.length > 0);
+
+  // Handle real-time price updates
+  useOnPriceUpdate(
+    useCallback(
+      (priceData: any) => {
+        const { symbol, price, change, changePercent } = priceData;
+
+        setHoldings((prevHoldings) =>
+          prevHoldings.map((holding) => {
+            if (holding.stockSymbol === symbol) {
+              // Recalculate unrealized P&L with new price
+              const newCurrentValue = price * holding.quantity;
+              const newUnrealizedPnL = newCurrentValue - holding.totalInvested;
+              const newUnrealizedPnLPct =
+                holding.totalInvested > 0 ? (newUnrealizedPnL / holding.totalInvested) * 100 : 0;
+
+              return {
+                ...holding,
+                currentPrice: price,
+                currentValue: newCurrentValue,
+                unrealizedPnL: newUnrealizedPnL,
+                unrealizedPnLPct: newUnrealizedPnLPct,
+                dayChange: change,
+                dayChangePct: changePercent,
+              };
+            }
+            return holding;
+          })
+        );
+      },
+      [holdings]
+    )
+  );
 
   const handleSetExitStrategy = (holding: Holding) => {
     setSelectedHolding(holding);
@@ -76,11 +116,17 @@ const HoldingsPage: React.FC = () => {
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
             My Holdings
           </Typography>
+          <Box sx={{ ml: 'auto' }}>
+            <ConnectionStatusIndicator />
+          </Box>
         </Box>
         <Typography variant="body2" color="text.secondary">
           View your current positions and manage exit strategies
         </Typography>
       </Box>
+
+      {/* Market Status Banner */}
+      <MarketStatusBanner />
 
       {/* Info Banner */}
       <Alert severity="info" sx={{ mb: 3 }}>
