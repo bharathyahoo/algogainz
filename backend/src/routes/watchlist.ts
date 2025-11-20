@@ -1,6 +1,7 @@
 import express, { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { subscribeToWatchlist } from '../utils/kiteInitializer';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -114,6 +115,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         sortOrder
       }
     });
+
+    // Subscribe to real-time price updates
+    try {
+      await subscribeToWatchlist([stockSymbol]);
+      console.log(`📊 Subscribed to real-time updates for ${stockSymbol}`);
+    } catch (error: any) {
+      console.error(`⚠️  Failed to subscribe to ${stockSymbol}:`, error.message);
+      // Don't fail the request if subscription fails
+    }
 
     res.status(201).json({
       success: true,
@@ -251,6 +261,9 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
     await prisma.watchlist.delete({
       where: { id }
     });
+
+    // Note: WebSocket subscriptions are managed automatically
+    // when clients connect/disconnect, so no manual unsubscription needed
 
     res.json({
       success: true,

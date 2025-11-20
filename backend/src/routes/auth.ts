@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { initializeKiteForUser, subscribeToWatchlist } from '../utils/kiteInitializer';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -95,16 +96,39 @@ router.get('/callback', async (req: Request, res: Response) => {
       },
       update: {
         accessToken: access_token,
-        email: email || undefined
+        email: email || undefined,
+        tokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
       },
       create: {
         kiteUserId: user_id,
         accessToken: access_token,
         apiKey: apiKey,
         apiSecret: apiSecret,
-        email: email || undefined
+        email: email || undefined,
+        tokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
       }
     });
+
+    // Initialize Kite API for real-time data (respects USE_KITE_REAL_DATA env var)
+    try {
+      await initializeKiteForUser(apiKey, access_token);
+
+      // Subscribe to user's existing watchlist stocks
+      const watchlist = await prisma.watchlist.findMany({
+        where: { userId: user.id },
+        select: { stockSymbol: true }
+      });
+
+      if (watchlist.length > 0) {
+        const symbols = watchlist.map((w: { stockSymbol: string }) => w.stockSymbol);
+        await subscribeToWatchlist(symbols);
+        console.log(`📊 Auto-subscribed to ${symbols.length} watchlist stocks for user ${user_id}`);
+      }
+    } catch (error: any) {
+      // Log error but don't fail the authentication
+      console.error('⚠️  Failed to initialize Kite data:', error.message);
+      console.log('User authenticated successfully, but using mock data mode');
+    }
 
     // Create JWT token for our application
     const jwtSecret = process.env.JWT_SECRET;
