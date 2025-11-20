@@ -1,4 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import compression from 'compression';
 import dotenv from 'dotenv';
@@ -30,6 +31,10 @@ import { validateAIConfig } from './config/ai';
 // Validate AI configuration
 validateAIConfig();
 
+// Import WebSocket server
+import { wsServer } from './websocket/server';
+import { getCurrentMarketStatus, scheduleMarketStatusCheck } from './utils/marketHours';
+
 // Import routes
 import authRoutes from './routes/auth';
 import watchlistRoutes from './routes/watchlist';
@@ -44,6 +49,9 @@ import aiRoutes from './routes/ai';
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
+
+// Create HTTP server for WebSocket support
+const httpServer = createServer(app);
 
 // Trust proxy (for apps behind reverse proxies like Nginx, Cloudflare)
 app.set('trust proxy', trustProxy);
@@ -63,11 +71,23 @@ app.use('/api/', apiLimiter);
 
 // Health check endpoint (no auth required)
 app.get('/health', (req: Request, res: Response) => {
+  const marketStatus = getCurrentMarketStatus();
+  const wsStats = wsServer.getStats();
+
   res.status(200).json({
     status: 'OK',
     message: 'AlgoGainz API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    marketStatus: {
+      status: marketStatus.status,
+      message: marketStatus.message,
+    },
+    websocket: {
+      enabled: true,
+      connectedClients: wsStats.connectedClients,
+      subscribedSymbols: wsStats.subscribedSymbols,
+    },
   });
 });
 
@@ -122,20 +142,43 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+// Initialize WebSocket server
+if (process.env.NODE_ENV !== 'test') {
+  wsServer.initialize(httpServer);
+
+  // Schedule market status monitoring
+  scheduleMarketStatusCheck((status) => {
+    console.log(`📊 Market status changed to: ${status}`);
+    wsServer.broadcastMarketStatus(status);
+  });
+
+  // Broadcast initial market status
+  const initialMarketStatus = getCurrentMarketStatus();
+  wsServer.broadcastMarketStatus(initialMarketStatus.status);
+}
+
 // Graceful shutdown handler
 process.on('SIGTERM', () => {
   console.log('⚠️  SIGTERM signal received: closing HTTP server');
-  process.exit(0);
+  httpServer.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
 });
 
 process.on('SIGINT', () => {
   console.log('⚠️  SIGINT signal received: closing HTTP server');
-  process.exit(0);
+  httpServer.close(() => {
+    console.log('✅ HTTP server closed');
+    process.exit(0);
+  });
 });
 
 // Start server only if not in test mode
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
+    const marketStatus = getCurrentMarketStatus();
+
     console.log('🚀 AlgoGainz API Server Started');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`📡 Port: ${PORT}`);
@@ -143,6 +186,8 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
     console.log(`🔒 Security: Helmet, CORS, Rate Limiting ✓`);
     console.log(`📦 Compression: Enabled ✓`);
+    console.log(`⚡ WebSocket: Enabled ✓`);
+    console.log(`📈 Market Status: ${marketStatus.status} - ${marketStatus.message}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   });
 }
