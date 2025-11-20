@@ -37,14 +37,32 @@ export interface KiteTick {
 export function parseBinary(buffer: Buffer): KiteTick[] {
   const ticks: KiteTick[] = [];
 
-  // Check if buffer is empty
+  // Check if buffer is empty or too small
   if (!buffer || buffer.length === 0) {
+    return ticks;
+  }
+
+  // Kite WebSocket sends different types of messages:
+  // - Tick data (has proper structure with packet count)
+  // - Heartbeat/ping messages (very small, just keep-alive)
+  // - Status messages (market closed, etc.)
+  // Minimum valid tick message is at least 10 bytes (2 header + 8 LTP)
+  if (buffer.length < 10) {
+    // This is likely a heartbeat or control message, not tick data
+    // Just ignore it silently
     return ticks;
   }
 
   try {
     // First 2 bytes indicate number of packets
     const numberOfPackets = buffer.readUInt16BE(0);
+
+    // Sanity check: if numberOfPackets is unreasonably large, this isn't tick data
+    if (numberOfPackets > 1000) {
+      // Not a valid tick message
+      return ticks;
+    }
+
     let offset = 2;
 
     for (let i = 0; i < numberOfPackets; i++) {
@@ -53,7 +71,8 @@ export function parseBinary(buffer: Buffer): KiteTick[] {
       offset += 2;
 
       if (offset + packetLength > buffer.length) {
-        console.error('Invalid packet length, buffer overflow');
+        // This can happen with non-tick messages (heartbeats, etc.)
+        // Just stop processing this buffer
         break;
       }
 
@@ -67,8 +86,12 @@ export function parseBinary(buffer: Buffer): KiteTick[] {
 
       offset += packetLength;
     }
-  } catch (error) {
-    console.error('Error parsing binary data:', error);
+  } catch (error: any) {
+    // Only log if this looks like an actual tick data parsing error
+    // Ignore errors from heartbeat/control messages
+    if (buffer.length >= 10) {
+      console.error('Error parsing binary data:', error.message || error);
+    }
   }
 
   return ticks;

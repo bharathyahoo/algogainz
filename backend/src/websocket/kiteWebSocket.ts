@@ -43,6 +43,7 @@ class KiteWebSocketClient {
 
         this.ws.on('open', () => {
           console.log('✅ Connected to Kite WebSocket');
+          console.log('💡 Note: During non-market hours, only heartbeat messages are received (no tick data)');
           this.isConnected = true;
           this.reconnectAttempts = 0;
           this.startHeartbeat();
@@ -163,14 +164,19 @@ class KiteWebSocketClient {
   private handleMessage(data: Buffer): void {
     try {
       // Parse binary tick data from Kite
+      // During market closed hours, only heartbeat/control messages are received
       const ticks = parseBinary(data);
 
-      // Process each tick
+      // Process each tick (will be empty during market closed)
       for (const tick of ticks) {
         this.processTick(tick);
       }
-    } catch (error) {
-      console.error('Error handling Kite WebSocket message:', error);
+    } catch (error: any) {
+      // Don't spam console with errors from heartbeat messages
+      // Only log if it's a significant error
+      if (data.length >= 10) {
+        console.error('Error handling Kite WebSocket message:', error.message || error);
+      }
     }
   }
 
