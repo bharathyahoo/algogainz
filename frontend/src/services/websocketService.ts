@@ -48,6 +48,8 @@ class WebSocketService {
   private subscribedSymbols: Set<string> = new Set();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
+  private userId: string = '';
+  private token: string = '';
 
   /**
    * Connect to WebSocket server
@@ -59,6 +61,8 @@ class WebSocketService {
     }
 
     this.updateConnectionStatus('connecting');
+    this.userId = userId;
+    this.token = token;
 
     this.socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
@@ -69,7 +73,7 @@ class WebSocketService {
     });
 
     this.setupEventListeners();
-    this.authenticate(userId, token);
+    // Note: authenticate() is now called in the 'connect' event listener
   }
 
   /**
@@ -91,6 +95,7 @@ class WebSocketService {
   private authenticate(userId: string, token: string): void {
     if (!this.socket) return;
 
+    console.log('[WebSocket] Sending authentication:', { userId });
     this.socket.emit('authenticate', { userId, token });
   }
 
@@ -105,6 +110,11 @@ class WebSocketService {
       console.log('[WebSocket] Connected');
       this.reconnectAttempts = 0;
       this.updateConnectionStatus('connected');
+
+      // Authenticate after connection is established
+      if (this.userId && this.token) {
+        this.authenticate(this.userId, this.token);
+      }
 
       // Resubscribe to symbols after reconnection
       if (this.subscribedSymbols.size > 0) {
