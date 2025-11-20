@@ -21,6 +21,7 @@ import dashboardService, { type DashboardMetrics } from '../services/dashboardSe
 import PnLTrendChart from '../components/dashboard/PnLTrendChart';
 import WinLossChart from '../components/dashboard/WinLossChart';
 import PerformersCard from '../components/dashboard/PerformersCard';
+import SectorAllocationChart from '../components/dashboard/SectorAllocationChart';
 import { ConnectionStatusIndicator } from '../components/common/ConnectionStatus';
 import { MarketStatusBanner } from '../components/common/MarketStatusBanner';
 import { usePriceUpdates, useOnPriceUpdate } from '../hooks/useWebSocket';
@@ -322,8 +323,13 @@ const DashboardPage: React.FC = () => {
                 <WinLossChart totalTrades={metrics.totalTrades ?? 0} winRate={metrics.winRate ?? 0} />
               </Grid>
 
+              {/* Sector Allocation Chart */}
+              <Grid item xs={12} md={6}>
+                <SectorAllocationChart holdings={holdings} />
+              </Grid>
+
               {/* Performers */}
-              <Grid item xs={12}>
+              <Grid item xs={12} md={6}>
                 <PerformersCard
                   topPerformers={metrics.topPerformers ?? []}
                   worstPerformers={metrics.worstPerformers ?? []}
