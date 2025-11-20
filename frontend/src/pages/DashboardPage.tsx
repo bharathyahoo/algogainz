@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -21,17 +21,23 @@ import dashboardService, { type DashboardMetrics } from '../services/dashboardSe
 import PnLTrendChart from '../components/dashboard/PnLTrendChart';
 import WinLossChart from '../components/dashboard/WinLossChart';
 import PerformersCard from '../components/dashboard/PerformersCard';
+import { ConnectionStatusIndicator } from '../components/common/ConnectionStatus';
+import { MarketStatusBanner } from '../components/common/MarketStatusBanner';
+import { usePriceUpdates, useOnPriceUpdate } from '../hooks/useWebSocket';
+import { holdingsService, type Holding } from '../services/holdingsService';
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadMetrics();
+    loadHoldings();
   }, []);
 
   const loadMetrics = async () => {
@@ -47,6 +53,79 @@ const DashboardPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const loadHoldings = async () => {
+    try {
+      const data = await holdingsService.getHoldings();
+      setHoldings(data);
+    } catch (err: any) {
+      console.error('Error loading holdings:', err);
+    }
+  };
+
+  // Subscribe to WebSocket price updates for all holdings
+  const holdingSymbols = holdings.map((h) => h.stockSymbol);
+  usePriceUpdates(holdingSymbols, holdings.length > 0);
+
+  // Handle real-time price updates
+  useOnPriceUpdate(
+    useCallback(
+      (priceData: any) => {
+        const { symbol, price } = priceData;
+
+        // Find the holding that matches this symbol
+        const holding = holdings.find((h) => h.stockSymbol === symbol);
+        if (!holding) return;
+
+        // Calculate new unrealized P&L for this holding
+        const newCurrentValue = price * holding.quantity;
+        const newUnrealizedPnL = newCurrentValue - holding.totalInvested;
+
+        // Calculate the difference in unrealized P&L
+        const pnlDiff = newUnrealizedPnL - (holding.unrealizedPnL || 0);
+
+        // Update metrics with the new values
+        setMetrics((prevMetrics) => {
+          if (!prevMetrics) return prevMetrics;
+
+          const newUnrealizedPnL = (prevMetrics.unrealizedPnL || 0) + pnlDiff;
+          const newCurrentPortfolioValue = (prevMetrics.currentPortfolioValue || 0) + pnlDiff;
+          const newTotalPnL = (prevMetrics.realizedPnL || 0) + newUnrealizedPnL;
+          const newReturnPercent =
+            prevMetrics.totalInvested && prevMetrics.totalInvested > 0
+              ? (newTotalPnL / prevMetrics.totalInvested) * 100
+              : 0;
+
+          return {
+            ...prevMetrics,
+            unrealizedPnL: newUnrealizedPnL,
+            currentPortfolioValue: newCurrentPortfolioValue,
+            totalPnL: newTotalPnL,
+            returnPercent: newReturnPercent,
+          };
+        });
+
+        // Update the holding in state
+        setHoldings((prevHoldings) =>
+          prevHoldings.map((h) =>
+            h.stockSymbol === symbol
+              ? {
+                  ...h,
+                  currentPrice: price,
+                  currentValue: newCurrentValue,
+                  unrealizedPnL: newUnrealizedPnL,
+                  unrealizedPnLPct:
+                    h.totalInvested > 0 ? (newUnrealizedPnL / h.totalInvested) * 100 : 0,
+                  dayChange: priceData.change,
+                  dayChangePct: priceData.changePercent,
+                }
+              : h
+          )
+        );
+      },
+      [holdings]
+    )
+  );
 
   const formatCurrency = (value: number | null | undefined) => {
     const safeValue = value ?? 0;
@@ -70,7 +149,11 @@ const DashboardPage: React.FC = () => {
             Welcome back, {user?.userName || 'User'}!
           </Typography>
         </Box>
+        <ConnectionStatusIndicator />
       </Box>
+
+      {/* Market Status Banner */}
+      <MarketStatusBanner />
 
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>

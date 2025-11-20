@@ -64,8 +64,10 @@ export const corsOptions = {
       return callback(null, true);
     }
 
-    const allowedOrigins = process.env.ALLOWED_ORIGINS
-      ? process.env.ALLOWED_ORIGINS.split(',')
+    // Support both ALLOWED_ORIGINS and CORS_ORIGIN for backward compatibility
+    const originsEnv = process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN;
+    const allowedOrigins = originsEnv
+      ? originsEnv.split(',').map(o => o.trim())
       : isDevelopment
       ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173']
       : [];

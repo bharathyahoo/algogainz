@@ -8,6 +8,7 @@ import { store } from './store';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import OfflineBanner from './components/common/OfflineBanner';
 import Layout from './components/common/Layout';
+import { useWebSocketConnection } from './hooks/useWebSocket';
 
 // Lazy-loaded pages (code splitting)
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -52,14 +53,22 @@ const theme = createTheme({
   },
 });
 
+// WebSocket initializer component
+function WebSocketProvider({ children }: { children: React.ReactNode }) {
+  // Initialize WebSocket connection when user is authenticated
+  useWebSocketConnection();
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <Provider store={store}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <BrowserRouter>
-          {/* Offline Detection Banner */}
-          <OfflineBanner />
+          <WebSocketProvider>
+            {/* Offline Detection Banner */}
+            <OfflineBanner />
 
           {/* Routes with Suspense for lazy loading */}
           <Suspense fallback={<PageLoader />}>
@@ -128,6 +137,7 @@ function App() {
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Suspense>
+          </WebSocketProvider>
         </BrowserRouter>
       </ThemeProvider>
     </Provider>

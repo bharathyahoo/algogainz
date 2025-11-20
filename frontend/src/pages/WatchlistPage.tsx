@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -40,6 +40,9 @@ import RecommendationCard from '../components/analysis/RecommendationCard';
 import TechnicalIndicatorsPanel from '../components/analysis/TechnicalIndicatorsPanel';
 import OrderDialog from '../components/trading/OrderDialog';
 import ManualTransactionDialog from '../components/transactions/ManualTransactionDialog';
+import { ConnectionStatusIndicator } from '../components/common/ConnectionStatus';
+import { MarketStatusBanner } from '../components/common/MarketStatusBanner';
+import { usePriceUpdates, useOnPriceUpdate } from '../hooks/useWebSocket';
 import type { WatchlistStock } from '../types';
 
 const WatchlistPage: React.FC = () => {
@@ -73,30 +76,35 @@ const WatchlistPage: React.FC = () => {
     loadCategories();
   }, []);
 
-  // Poll for price updates every 10 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (stocks.length > 0) {
-        updatePrices();
-      }
-    }, 10000);
+  // Subscribe to WebSocket price updates for all watchlist stocks
+  const watchlistSymbols = stocks.map(stock => stock.stockSymbol);
+  usePriceUpdates(watchlistSymbols, stocks.length > 0);
 
-    return () => clearInterval(interval);
-  }, [stocks]);
+  // Handle real-time price updates
+  useOnPriceUpdate(useCallback((priceData: any) => {
+    // Find the stock in watchlist and update it
+    const stockToUpdate = stocks.find(s => s.stockSymbol === priceData.symbol);
+    if (stockToUpdate) {
+      dispatch(updateStock({
+        ...stockToUpdate,
+        currentPrice: priceData.price,
+        dayChange: priceData.change,
+        dayChangePct: priceData.changePercent,
+      }));
+    }
+  }, [stocks, dispatch]));
 
   const loadWatchlist = async () => {
     dispatch(setLoading(true));
     try {
       const data = await watchlistService.getWatchlist();
       dispatch(setWatchlist(data));
-
-      // Load initial prices
-      if (data.length > 0) {
-        updatePrices();
-      }
+      // Prices will be updated via WebSocket in real-time
     } catch (error: any) {
       dispatch(setError(error.message));
       showSnackbar('Failed to load watchlist', 'error');
+    } finally {
+      dispatch(setLoading(false));
     }
   };
 
@@ -109,18 +117,8 @@ const WatchlistPage: React.FC = () => {
     }
   };
 
-  const updatePrices = async () => {
-    // TODO: Implement real-time price updates in Phase 3.3
-    // For now, this is a placeholder that will be implemented when
-    // we add WebSocket support for live price updates
-    try {
-      // const symbols = stocks.map(s => `${s.exchange}:${s.stockSymbol}`);
-      // const quotes = await watchlistService.getQuotes(symbols);
-      // Dispatch price updates to Redux store
-    } catch (error) {
-      console.error('Failed to update prices:', error);
-    }
-  };
+  // No longer needed - prices update via WebSocket in real-time
+  // const updatePrices = async () => { ... };
 
   const handleAddStock = () => {
     setAddDialogOpen(true);
@@ -234,19 +232,30 @@ const WatchlistPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+      {/* Market Status Banner */}
+      <MarketStatusBanner />
+
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          📊 Watchlist
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={handleAddStock}
-          size="large"
-        >
-          Add Stock
-        </Button>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            📊 Watchlist
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+            Real-time price updates via WebSocket
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <ConnectionStatusIndicator />
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleAddStock}
+            size="large"
+          >
+            Add Stock
+          </Button>
+        </Box>
       </Box>
 
       {/* Category Filter */}

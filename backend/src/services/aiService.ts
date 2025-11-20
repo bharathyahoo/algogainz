@@ -29,7 +29,7 @@ export interface AIResponse {
 }
 
 class AIService {
-  private client: AxiosInstance;
+  private client!: AxiosInstance;
   private isConfigured: boolean;
 
   constructor() {

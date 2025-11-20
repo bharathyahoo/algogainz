@@ -21,7 +21,8 @@ describe('Trading Flow Integration Tests', () => {
         id: testUserId,
         email: 'integration-test@example.com',
         kiteUserId: 'KITE-TEST-123',
-        name: 'Integration Test User',
+        apiKey: 'test-api-key',
+        apiSecret: 'test-api-secret',
       },
     });
   });

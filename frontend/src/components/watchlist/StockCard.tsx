@@ -10,12 +10,11 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
-  TrendingUp,
-  TrendingDown,
   Delete,
   Edit,
   ShowChart,
 } from '@mui/icons-material';
+import { PriceDisplay } from '../common/PriceDisplay';
 import type { WatchlistStock } from '../../types';
 
 interface StockCardProps {
@@ -31,9 +30,6 @@ const StockCard: React.FC<StockCardProps> = ({
   onEdit,
   onAnalyze,
 }) => {
-  const isPositive = (stock.dayChangePct || 0) >= 0;
-  const priceColor = isPositive ? 'success.main' : 'error.main';
-  const TrendIcon = isPositive ? TrendingUp : TrendingDown;
 
   return (
     <Card
@@ -65,23 +61,16 @@ const StockCard: React.FC<StockCardProps> = ({
           />
         </Box>
 
-        {/* Price Info */}
+        {/* Price Info - Real-time updates */}
         <Box sx={{ mb: 2 }}>
           {stock.currentPrice ? (
-            <>
-              <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
-                ₹{stock.currentPrice.toFixed(2)}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <TrendIcon sx={{ color: priceColor, fontSize: 20 }} />
-                <Typography
-                  variant="body1"
-                  sx={{ color: priceColor, fontWeight: 600 }}
-                >
-                  {stock.dayChange?.toFixed(2) || '0.00'} ({stock.dayChangePct?.toFixed(2) || '0.00'}%)
-                </Typography>
-              </Box>
-            </>
+            <PriceDisplay
+              price={stock.currentPrice}
+              change={stock.dayChange}
+              changePercent={stock.dayChangePct || 0}
+              fontSize="large"
+              animate={true}
+            />
           ) : (
             <Typography variant="body2" color="text.secondary">
               Loading price...

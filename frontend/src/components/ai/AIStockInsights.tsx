@@ -24,7 +24,7 @@ import {
   SmartToy as AIIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { aiService, SentimentAnalysis } from '../../services/aiService';
+import { aiService, type SentimentAnalysis } from '../../services/aiService';
 
 interface AIStockInsightsProps {
   symbol: string;
@@ -91,7 +91,7 @@ export const AIStockInsights: React.FC<AIStockInsightsProps> = ({
       case 'Negative':
         return <TrendingDownIcon fontSize="small" />;
       default:
-        return null;
+        return undefined;
     }
   };
 
