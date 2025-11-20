@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import type { Holding } from '../types';
 
 export interface ExitStrategy {
   id: string;
@@ -14,25 +15,8 @@ export interface ExitStrategy {
   updatedAt: string;
 }
 
-export interface Holding {
-  id: string;
-  userId: string;
-  stockSymbol: string;
-  companyName: string;
-  quantity: number;
-  avgBuyPrice: number;
-  totalInvested: number;
-  currentPrice: number | null;
-  currentValue: number | null;
-  unrealizedPnL: number | null;
-  unrealizedPnLPct: number | null;
-  dayChange: number | null;
-  dayChangePct: number | null;
-  lastUpdated: string;
-  createdAt: string;
-  updatedAt: string;
-  exitStrategy?: ExitStrategy | null;
-}
+// Note: Holding interface is now imported from '../types'
+export type { Holding };
 
 export interface ExitStrategyRequest {
   profitTargetPct: number | null;
@@ -44,14 +28,14 @@ export interface Alert {
   holdingId: string;
   stockSymbol: string;
   companyName: string;
-  currentPrice: number | null;
+  currentPrice: number | undefined;
   quantity: number;
   avgBuyPrice: number;
-  unrealizedPnL: number | null;
+  unrealizedPnL: number | undefined;
   profitAlertTriggered: boolean;
   stopLossAlertTriggered: boolean;
-  profitTargetPrice: number | null;
-  stopLossPrice: number | null;
+  profitTargetPrice: number | undefined;
+  stopLossPrice: number | undefined;
 }
 
 class HoldingsService {

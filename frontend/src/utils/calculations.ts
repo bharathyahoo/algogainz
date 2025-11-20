@@ -2,7 +2,7 @@
  * Utility functions for financial calculations in AlgoGainz
  */
 
-import type { Transaction, TransactionCharges, Holding } from '../types';
+import type { TransactionCharges } from '../types';
 
 /**
  * Calculate total charges for a transaction

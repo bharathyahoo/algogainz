@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
 import type { DashboardMetrics } from '../types';
 
 interface DashboardState {
@@ -150,7 +151,7 @@ const dashboardSlice = createSlice({
     },
 
     // Reset dashboard
-    resetDashboard: (state) => {
+    resetDashboard: () => {
       return initialState;
     },
   },

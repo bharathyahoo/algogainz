@@ -80,11 +80,14 @@ export interface Transaction {
 
 // Holdings types
 export interface ExitStrategy {
+  id?: string;
   profitTargetPct?: number;
   profitTargetPrice?: number;
   stopLossPct?: number;
   stopLossPrice?: number;
   alertEnabled: boolean;
+  profitAlertTriggered?: boolean;
+  stopLossAlertTriggered?: boolean;
 }
 
 export interface Holding {

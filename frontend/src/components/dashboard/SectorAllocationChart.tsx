@@ -237,7 +237,7 @@ const SectorAllocationChart: React.FC<SectorAllocationChartProps> = ({ holdings 
           <Legend
             verticalAlign="bottom"
             height={36}
-            formatter={(value, entry: any) => {
+            formatter={(value) => {
               const data = sectorData.find((d) => d.name === value);
               return `${value} (${data?.percentage.toFixed(1)}%)`;
             }}
