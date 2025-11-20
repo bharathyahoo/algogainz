@@ -7,6 +7,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { corsOptions } from '../config/security';
 import axios from 'axios';
+import { getCurrentMarketStatus } from '../utils/marketHours';
 
 interface ConnectedClient {
   userId: string;
@@ -187,7 +188,15 @@ class WebSocketServer {
       userId,
     });
 
+    // Send current market status immediately after authentication
+    const currentMarketStatus = getCurrentMarketStatus();
+    socket.emit('marketStatus', {
+      status: currentMarketStatus.status,
+      timestamp: new Date().toISOString(),
+    });
+
     console.log(`✅ Client authenticated: ${socket.id} (User: ${userId})`);
+    console.log(`📊 Sent market status to ${socket.id}: ${currentMarketStatus.status}`);
   }
 
   /**
