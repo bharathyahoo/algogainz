@@ -14,6 +14,7 @@ model User {
   id             String   @id @default(uuid())
   kiteUserId     String   @unique @map("kite_user_id")
   accessToken    String?  @map("access_token")
+  tokenExpiry    DateTime? @map("token_expiry") // Kite tokens expire after 24 hours
   apiKey         String   @map("api_key")
   apiSecret      String   @map("api_secret")
   email          String?  @unique

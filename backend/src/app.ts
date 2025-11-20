@@ -87,6 +87,13 @@ app.get('/health', (req: Request, res: Response) => {
       enabled: true,
       connectedClients: wsStats.connectedClients,
       subscribedSymbols: wsStats.subscribedSymbols,
+      dataMode: wsStats.useRealData ? 'real' : 'mock',
+      dataSource: wsStats.useRealData ? 'Kite API' : 'Simulated',
+      kiteInitialized: wsStats.kiteInitialized,
+    },
+    kiteApi: {
+      envUseRealData: process.env.USE_KITE_REAL_DATA === 'true',
+      activeMode: wsStats.useRealData ? 'Real Data' : 'Mock Data',
     },
   });
 });

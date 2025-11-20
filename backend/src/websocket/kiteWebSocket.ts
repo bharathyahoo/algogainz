@@ -5,21 +5,7 @@
 
 import WebSocket from 'ws';
 import { wsServer } from './server';
-
-interface KiteTick {
-  instrument_token: number;
-  last_price: number;
-  change: number;
-  volume: number;
-  buy_quantity: number;
-  sell_quantity: number;
-  ohlc: {
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-  };
-}
+import { parseBinary, calculatePercentChange, type KiteTick } from './kiteBinaryParser';
 
 interface SymbolMapping {
   symbol: string;
@@ -57,6 +43,7 @@ class KiteWebSocketClient {
 
         this.ws.on('open', () => {
           console.log('✅ Connected to Kite WebSocket');
+          console.log('💡 Note: During non-market hours, only heartbeat messages are received (no tick data)');
           this.isConnected = true;
           this.reconnectAttempts = 0;
           this.startHeartbeat();
@@ -176,21 +163,20 @@ class KiteWebSocketClient {
    */
   private handleMessage(data: Buffer): void {
     try {
-      // Kite sends binary data, need to parse it
-      // For simplicity, we'll assume JSON for now
-      // In production, you need to use the Kite WebSocket binary parser
+      // Parse binary tick data from Kite
+      // During market closed hours, only heartbeat/control messages are received
+      const ticks = parseBinary(data);
 
-      const message = data.toString();
-      const tick = JSON.parse(message);
-
-      // Check if it's a tick message
-      if (tick && tick.instrument_token) {
+      // Process each tick (will be empty during market closed)
+      for (const tick of ticks) {
         this.processTick(tick);
       }
-    } catch (error) {
-      // Binary data parsing would go here
-      // For now, we'll handle this in the actual Kite integration
-      console.debug('Received binary data from Kite WebSocket');
+    } catch (error: any) {
+      // Don't spam console with errors from heartbeat messages
+      // Only log if it's a significant error
+      if (data.length >= 10) {
+        console.error('Error handling Kite WebSocket message:', error.message || error);
+      }
     }
   }
 
@@ -201,14 +187,18 @@ class KiteWebSocketClient {
     const mapping = this.symbolMappings.get(tick.instrument_token);
     if (!mapping) return;
 
+    // Skip if we don't have last_price (required)
+    if (!tick.last_price) return;
+
+    const changePercent = calculatePercentChange(tick);
+    const change = tick.ohlc?.close ? tick.last_price - tick.ohlc.close : 0;
+
     const priceData = {
       price: tick.last_price,
-      change: tick.change,
-      changePercent: (tick.change / tick.ohlc.close) * 100,
-      volume: tick.volume,
-      ohlc: tick.ohlc,
-      buyQuantity: tick.buy_quantity,
-      sellQuantity: tick.sell_quantity,
+      change,
+      changePercent,
+      volume: tick.volume_traded || 0,
+      timestamp: new Date().toISOString(),
     };
 
     // Broadcast to our WebSocket server

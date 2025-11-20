@@ -1,5 +1,5 @@
 import express, { Response } from 'express';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { authMiddleware, AuthRequest, ensureValidKiteToken } from '../middleware/auth';
 import { tradingService, type OrderRequest } from '../services/tradingService';
 
 const router = express.Router();
@@ -25,7 +25,7 @@ router.get('/market-status', (req, res) => {
  * POST /api/trading/preview
  * Get order preview with charges
  */
-router.post('/preview', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/preview', authMiddleware, ensureValidKiteToken, async (req: AuthRequest, res: Response) => {
   try {
     const kiteAccessToken = req.user?.kiteAccessToken;
     if (!kiteAccessToken) {
@@ -120,7 +120,7 @@ router.post('/preview', authMiddleware, async (req: AuthRequest, res: Response) 
  * POST /api/trading/place
  * Place order through Kite API
  */
-router.post('/place', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post('/place', authMiddleware, ensureValidKiteToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
     const kiteAccessToken = req.user?.kiteAccessToken;
@@ -217,7 +217,7 @@ router.get('/orders', authMiddleware, async (req: AuthRequest, res: Response) =>
  * GET /api/trading/orders/:id
  * Get order status and update from Kite
  */
-router.get('/orders/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get('/orders/:id', authMiddleware, ensureValidKiteToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
     const kiteAccessToken = req.user?.kiteAccessToken;
@@ -255,7 +255,7 @@ router.get('/orders/:id', authMiddleware, async (req: AuthRequest, res: Response
  * DELETE /api/trading/orders/:id
  * Cancel order
  */
-router.delete('/orders/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
+router.delete('/orders/:id', authMiddleware, ensureValidKiteToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.userId;
     const kiteAccessToken = req.user?.kiteAccessToken;

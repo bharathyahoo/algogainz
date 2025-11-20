@@ -9,6 +9,8 @@ import { corsOptions } from '../config/security';
 import axios from 'axios';
 import { getCurrentMarketStatus } from '../utils/marketHours';
 import { alertService } from '../services/alertService';
+import { getKiteWebSocketClient, initializeKiteWebSocket } from './kiteWebSocket';
+import { instrumentService } from '../services/instrumentService';
 
 interface ConnectedClient {
   userId: string;
@@ -32,6 +34,8 @@ class WebSocketServer {
   private symbolSubscriptions: Map<string, Set<string>> = new Map(); // symbol -> Set<socketId>
   private priceUpdateInterval: NodeJS.Timeout | null = null;
   private lastPrices: Map<string, number> = new Map(); // symbol -> last price
+  private useRealData: boolean = false; // Toggle between mock and real Kite data
+  private kiteInitialized: boolean = false;
 
   /**
    * Initialize WebSocket server
@@ -289,6 +293,11 @@ class WebSocketServer {
       this.symbolSubscriptions.get(symbol)?.add(socket.id);
     });
 
+    // Subscribe to Kite WebSocket if using real data
+    if (this.useRealData && this.kiteInitialized) {
+      this.subscribeToKite(symbols);
+    }
+
     socket.emit('subscribed', { symbols });
     console.log(`📊 Client ${socket.id} subscribed to: ${symbols.join(', ')}`);
   }
@@ -487,7 +496,70 @@ class WebSocketServer {
         (sum, set) => sum + set.size,
         0
       ),
+      useRealData: this.useRealData,
+      kiteInitialized: this.kiteInitialized,
     };
+  }
+
+  /**
+   * Initialize Kite WebSocket for real market data
+   */
+  async initializeKiteData(apiKey: string, accessToken: string): Promise<void> {
+    try {
+      console.log('🚀 Initializing Kite WebSocket...');
+
+      // Fetch instruments list
+      await instrumentService.fetchInstruments(apiKey);
+
+      // Initialize Kite WebSocket client
+      initializeKiteWebSocket(apiKey, accessToken);
+
+      this.kiteInitialized = true;
+      console.log('✅ Kite WebSocket initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize Kite WebSocket:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Toggle between mock and real data
+   */
+  setUseRealData(useReal: boolean): void {
+    this.useRealData = useReal;
+    console.log(`📊 Data source: ${useReal ? 'Real (Kite API)' : 'Mock'}`);
+
+    if (useReal && !this.kiteInitialized) {
+      console.warn('⚠️  Kite WebSocket not initialized. Call initializeKiteData() first.');
+    }
+  }
+
+  /**
+   * Subscribe symbols to Kite WebSocket (when using real data)
+   */
+  subscribeToKite(symbols: string[]): void {
+    if (!this.useRealData || !this.kiteInitialized) {
+      console.warn('⚠️  Cannot subscribe to Kite: not initialized or using mock data');
+      return;
+    }
+
+    const kiteClient = getKiteWebSocketClient();
+    if (!kiteClient) {
+      console.warn('⚠️  Kite WebSocket client not available');
+      return;
+    }
+
+    // Get instrument tokens for symbols
+    const mappings = instrumentService.getInstrumentTokens(symbols);
+
+    if (mappings.length > 0) {
+      kiteClient.subscribe(mappings);
+      // Set to 'quote' mode for better data
+      const tokens = mappings.map(m => m.instrumentToken);
+      kiteClient.setMode('quote', tokens);
+
+      console.log(`📊 Subscribed ${mappings.length} symbols to Kite WebSocket`);
+    }
   }
 
   /**
