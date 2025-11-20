@@ -2,13 +2,14 @@
  * Backtest Routes - API endpoints for backtesting strategies
  */
 
-const express = require('express');
+import express, { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import rateLimit from 'express-rate-limit';
+import { ensureAuthenticated, ensureValidKiteToken } from '../middleware/auth';
+
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const backtestService = require('../services/backtestService');
-const { ensureAuthenticated, ensureValidKiteToken } = require('../middleware/auth');
-const rateLimit = require('express-rate-limit');
 
 // Rate limiting for backtest operations (resource-intensive)
 const backtestLimiter = rateLimit({
@@ -21,9 +22,9 @@ const backtestLimiter = rateLimit({
  * POST /api/backtest/run
  * Run a new backtest
  */
-router.post('/run', ensureAuthenticated, ensureValidKiteToken, backtestLimiter, async (req, res) => {
+router.post('/run', ensureAuthenticated, ensureValidKiteToken, backtestLimiter, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req as any).user.id;
     const {
       strategyName,
       stockSymbol,
@@ -137,7 +138,7 @@ router.post('/run', ensureAuthenticated, ensureValidKiteToken, backtestLimiter, 
       },
       message: 'Backtest completed successfully',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Backtest error:', error);
 
     res.status(500).json({
@@ -154,25 +155,25 @@ router.post('/run', ensureAuthenticated, ensureValidKiteToken, backtestLimiter, 
  * GET /api/backtest/results
  * Get all backtest results for user
  */
-router.get('/results', ensureAuthenticated, async (req, res) => {
+router.get('/results', ensureAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req as any).user.id;
     const { limit = 20, offset = 0, symbol, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
 
-    const where = {
+    const where: any = {
       userId,
       ...(symbol && { stockSymbol: symbol }),
     };
 
-    const orderBy = {
-      [sortBy]: sortOrder,
+    const orderBy: any = {
+      [sortBy as string]: sortOrder,
     };
 
     const results = await prisma.backtestResult.findMany({
       where,
       orderBy,
-      take: parseInt(limit),
-      skip: parseInt(offset),
+      take: parseInt(limit as string),
+      skip: parseInt(offset as string),
       select: {
         id: true,
         strategyName: true,
@@ -220,9 +221,9 @@ router.get('/results', ensureAuthenticated, async (req, res) => {
  * GET /api/backtest/:id
  * Get detailed backtest result by ID
  */
-router.get('/:id', ensureAuthenticated, async (req, res) => {
+router.get('/:id', ensureAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req as any).user.id;
     const { id } = req.params;
 
     const result = await prisma.backtestResult.findFirst({
@@ -257,9 +258,9 @@ router.get('/:id', ensureAuthenticated, async (req, res) => {
  * DELETE /api/backtest/:id
  * Delete a backtest result
  */
-router.delete('/:id', ensureAuthenticated, async (req, res) => {
+router.delete('/:id', ensureAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req as any).user.id;
     const { id } = req.params;
 
     // Check if backtest exists and belongs to user
@@ -300,9 +301,9 @@ router.delete('/:id', ensureAuthenticated, async (req, res) => {
  * GET /api/backtest/compare
  * Compare multiple backtest results
  */
-router.post('/compare', ensureAuthenticated, async (req, res) => {
+router.post('/compare', ensureAuthenticated, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req as any).user.id;
     const { backtestIds } = req.body;
 
     if (!backtestIds || backtestIds.length === 0) {
@@ -352,4 +353,4 @@ router.post('/compare', ensureAuthenticated, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

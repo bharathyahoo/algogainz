@@ -20,7 +20,10 @@ class BacktestService {
         '/backtest/run',
         config
       );
-      return response.data.data!;
+      if (!response.data?.data) {
+        throw new Error('Invalid response from server');
+      }
+      return response.data.data;
     } catch (error: any) {
       console.error('Failed to run backtest:', error);
       throw new Error(error.response?.data?.error?.message || 'Failed to run backtest');
@@ -49,8 +52,8 @@ class BacktestService {
       >('/backtest/results', { params });
 
       return {
-        results: response.data.data?.results || [],
-        pagination: response.data.data?.pagination || { total: 0, limit: 20, offset: 0 },
+        results: response.data?.data?.results || [],
+        pagination: response.data?.data?.pagination || { total: 0, limit: 20, offset: 0 },
       };
     } catch (error: any) {
       console.error('Failed to get backtest results:', error);
@@ -64,7 +67,10 @@ class BacktestService {
   async getBacktestById(id: string): Promise<BacktestResult> {
     try {
       const response = await apiService.get<ApiResponse<BacktestResult>>(`/backtest/${id}`);
-      return response.data.data!;
+      if (!response.data?.data) {
+        throw new Error('Invalid response from server');
+      }
+      return response.data.data;
     } catch (error: any) {
       console.error('Failed to get backtest result:', error);
       throw new Error(error.response?.data?.error?.message || 'Failed to get backtest result');
@@ -92,7 +98,7 @@ class BacktestService {
         '/backtest/compare',
         { backtestIds }
       );
-      return response.data.data || [];
+      return response.data?.data || [];
     } catch (error: any) {
       console.error('Failed to compare backtests:', error);
       throw new Error(error.response?.data?.error?.message || 'Failed to compare backtests');
