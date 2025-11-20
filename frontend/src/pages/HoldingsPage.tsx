@@ -32,9 +32,7 @@ const HoldingsPage: React.FC = () => {
 
   useEffect(() => {
     loadHoldings();
-    // Note: We don't load active alerts on mount anymore
-    // Alerts are only shown when they trigger in real-time via WebSocket
-    // This prevents dismissed alerts from re-appearing on page refresh
+    loadActiveAlerts();
   }, []);
 
   const loadHoldings = async () => {
@@ -50,10 +48,56 @@ const HoldingsPage: React.FC = () => {
     }
   };
 
+  const loadActiveAlerts = () => {
+    // Request active alerts from server
+    websocketService.getActiveAlerts();
+  };
+
+  // Listen for active alerts response
+  useEffect(() => {
+    const unsubscribe = websocketService.onActiveAlerts((activeAlerts) => {
+      console.log('[HoldingsPage] Received active alerts:', activeAlerts);
+
+      // Filter out dismissed alerts
+      const filteredAlerts = activeAlerts.filter((alert) => {
+        return !isAlertDismissed(alert.holdingId, alert.type);
+      });
+
+      setAlerts(filteredAlerts);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Check if an alert has been dismissed (stored in localStorage)
+  const isAlertDismissed = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS'): boolean => {
+    const key = `algogainz_dismissed_alert_${holdingId}_${type}`;
+    return localStorage.getItem(key) === 'true';
+  };
+
+  // Mark an alert as dismissed in localStorage
+  const markAlertDismissed = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS') => {
+    const key = `algogainz_dismissed_alert_${holdingId}_${type}`;
+    localStorage.setItem(key, 'true');
+  };
+
+  // Clear dismissed status (when exit strategy is updated)
+  const clearDismissedAlert = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS') => {
+    const key = `algogainz_dismissed_alert_${holdingId}_${type}`;
+    localStorage.removeItem(key);
+  };
+
   // Listen for new alerts
   useOnAlert(
     useCallback((newAlert: AlertType) => {
       console.log('[HoldingsPage] New alert received:', newAlert);
+
+      // Check if this alert was previously dismissed
+      const isDismissed = isAlertDismissed(newAlert.holdingId, newAlert.type);
+      if (isDismissed) {
+        console.log('[HoldingsPage] Alert was previously dismissed, ignoring');
+        return;
+      }
 
       // Add to alerts list if not already present
       setAlerts((prevAlerts) => {
@@ -125,7 +169,14 @@ const HoldingsPage: React.FC = () => {
   };
 
   const handleExitStrategySuccess = () => {
+    // Clear dismissed status for this holding (allows alerts to trigger again)
+    if (selectedHolding) {
+      clearDismissedAlert(selectedHolding.id, 'PROFIT_TARGET');
+      clearDismissedAlert(selectedHolding.id, 'STOP_LOSS');
+    }
+
     loadHoldings(); // Refresh holdings after setting exit strategy
+    loadActiveAlerts(); // Reload alerts to show new ones
   };
 
   const handleSellSuccess = () => {
@@ -134,12 +185,15 @@ const HoldingsPage: React.FC = () => {
   };
 
   const handleDismissAlert = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS') => {
+    // Mark as dismissed in localStorage (prevents re-appearing)
+    markAlertDismissed(holdingId, type);
+
     // Remove from local state
     setAlerts((prevAlerts) =>
       prevAlerts.filter((a) => !(a.holdingId === holdingId && a.type === type))
     );
 
-    // Send dismissal to server
+    // Send dismissal to server (keeps database flag as true)
     websocketService.dismissAlert(holdingId, type);
   };
 
