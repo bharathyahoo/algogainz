@@ -5,7 +5,7 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import rateLimit from 'express-rate-limit';
-import { ensureAuthenticated, ensureValidKiteToken } from '../middleware/auth';
+import { authMiddleware, ensureValidKiteToken } from '../middleware/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -22,7 +22,7 @@ const backtestLimiter = rateLimit({
  * POST /api/backtest/run
  * Run a new backtest
  */
-router.post('/run', ensureAuthenticated, ensureValidKiteToken, backtestLimiter, async (req: Request, res: Response) => {
+router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const {
@@ -155,7 +155,7 @@ router.post('/run', ensureAuthenticated, ensureValidKiteToken, backtestLimiter, 
  * GET /api/backtest/results
  * Get all backtest results for user
  */
-router.get('/results', ensureAuthenticated, async (req: Request, res: Response) => {
+router.get('/results', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const { limit = 20, offset = 0, symbol, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
@@ -201,8 +201,8 @@ router.get('/results', ensureAuthenticated, async (req: Request, res: Response) 
       data: results,
       pagination: {
         total: totalCount,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
+        limit: parseInt(String(limit)),
+        offset: parseInt(String(offset)),
       },
     });
   } catch (error) {
@@ -221,7 +221,7 @@ router.get('/results', ensureAuthenticated, async (req: Request, res: Response) 
  * GET /api/backtest/:id
  * Get detailed backtest result by ID
  */
-router.get('/:id', ensureAuthenticated, async (req: Request, res: Response) => {
+router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const { id } = req.params;
@@ -258,7 +258,7 @@ router.get('/:id', ensureAuthenticated, async (req: Request, res: Response) => {
  * DELETE /api/backtest/:id
  * Delete a backtest result
  */
-router.delete('/:id', ensureAuthenticated, async (req: Request, res: Response) => {
+router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const { id } = req.params;
@@ -301,7 +301,7 @@ router.delete('/:id', ensureAuthenticated, async (req: Request, res: Response) =
  * GET /api/backtest/compare
  * Compare multiple backtest results
  */
-router.post('/compare', ensureAuthenticated, async (req: Request, res: Response) => {
+router.post('/compare', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const { backtestIds } = req.body;
