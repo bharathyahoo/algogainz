@@ -14,7 +14,6 @@ import {
 interface AlertBadgeProps {
   type: 'PROFIT_TARGET' | 'STOP_LOSS';
   targetPercent: number;
-  currentPrice: number;
   targetPrice: number;
   size?: 'small' | 'medium';
 }
@@ -22,7 +21,6 @@ interface AlertBadgeProps {
 export const AlertBadge: React.FC<AlertBadgeProps> = ({
   type,
   targetPercent,
-  currentPrice,
   targetPrice,
   size = 'small',
 }) => {

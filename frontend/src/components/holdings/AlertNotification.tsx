@@ -21,7 +21,7 @@ import {
   TrendingDown as TrendingDownIcon,
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
-import { Alert } from '../../services/websocketService';
+import type { Alert } from '../../services/websocketService';
 
 interface AlertNotificationProps {
   alert: Alert;

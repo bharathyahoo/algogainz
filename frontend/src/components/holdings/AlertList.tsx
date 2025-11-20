@@ -14,12 +14,11 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  Notifications as NotificationsIcon,
   NotificationsActive as NotificationsActiveIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
-import { Alert } from '../../services/websocketService';
+import type { Alert } from '../../services/websocketService';
 import { AlertNotification } from './AlertNotification';
 
 interface AlertListProps {
