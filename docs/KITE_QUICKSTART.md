@@ -16,7 +16,13 @@ Get real-time market data from Zerodha Kite in 5 minutes!
 KITE_API_KEY=your_api_key_here
 KITE_API_SECRET=your_api_secret_here
 KITE_REDIRECT_URL=http://localhost:3000/auth/callback
+
+# Toggle between real Kite data and mock data
+# Set to 'true' for production, 'false' for testing (default: false)
+USE_KITE_REAL_DATA=false
 ```
+
+**Important**: Set `USE_KITE_REAL_DATA=true` to use real market data, or `false` to use mock data for testing.
 
 ### Frontend `.env`
 
@@ -31,7 +37,6 @@ In your **authentication callback handler** (`backend/src/routes/auth.ts`):
 ```typescript
 import {
   initializeKiteForUser,
-  enableRealDataMode,
   subscribeToWatchlist
 } from '../utils/kiteInitializer';
 
@@ -56,17 +61,13 @@ router.get('/callback', async (req, res) => {
       }
     });
 
-    // 🚀 Initialize Kite real-time data
-    const success = await initializeKiteForUser(
+    // 🚀 Initialize Kite (automatically uses USE_KITE_REAL_DATA env var)
+    await initializeKiteForUser(
       process.env.KITE_API_KEY!,
       access_token
     );
 
-    if (success) {
-      enableRealDataMode(); // Switch to real data
-      console.log('✅ Kite real-time data enabled!');
-
-      // Subscribe to user's watchlist
+    // Subscribe to user's watchlist
       const watchlist = await prisma.watchlist.findMany({
         where: { userId: user_id }
       });
@@ -109,29 +110,48 @@ router.post('/watchlist', async (req, res) => {
 
 ## Step 5: Test It!
 
-1. **Start your server**:
+1. **Choose your data mode** in `.env`:
+   ```env
+   # For testing with mock data:
+   USE_KITE_REAL_DATA=false
+
+   # For production with real Kite data:
+   USE_KITE_REAL_DATA=true
+   ```
+
+2. **Start your server**:
    ```bash
    cd backend
    npm run dev
    ```
 
-2. **Login** through Zerodha (triggers Kite initialization)
+3. **Login** through Zerodha (triggers Kite initialization)
 
-3. **Add a stock** to watchlist during market hours (9:15 AM - 3:30 PM IST)
+4. **Add a stock** to watchlist during market hours (9:15 AM - 3:30 PM IST)
 
-4. **Watch live prices update** every second! 🎉
+5. **Watch live prices update** every second! 🎉
+
+**Tip**: Use `USE_KITE_REAL_DATA=false` during development to avoid rate limits and test without market hours restrictions.
 
 ## Verify It's Working
 
-Check the console for these messages:
+### If `USE_KITE_REAL_DATA=true`, check the console for:
 
 ```
+🔧 Initializing Kite API (USE_KITE_REAL_DATA=true)...
 📥 Fetching instruments from Kite API...
 ✅ Cached 50000+ instruments
 🔌 Connecting to Kite WebSocket...
 ✅ Connected to Kite WebSocket
-✅ Real data mode enabled - Using Kite API for live prices
+✅ Real data mode enabled
 📊 Subscribed to 5 symbols: RELIANCE, TCS, INFY, HDFC, ICICIBANK
+```
+
+### If `USE_KITE_REAL_DATA=false`, check the console for:
+
+```
+📊 USE_KITE_REAL_DATA=false - Using mock data mode
+⚠️  Mock data mode enabled - Using simulated prices
 ```
 
 In the browser console, you should see:
@@ -178,9 +198,13 @@ In the browser console, you should see:
 **Problem**: Real data mode not enabled
 
 **Solution**:
-```typescript
-import { enableRealDataMode } from '../utils/kiteInitializer';
-enableRealDataMode(); // Must call this after initialization
+1. Check your `.env` file has `USE_KITE_REAL_DATA=true`
+2. Restart your server after changing the environment variable
+3. Verify initialization logs show "Initializing Kite API (USE_KITE_REAL_DATA=true)"
+
+```env
+# In backend/.env
+USE_KITE_REAL_DATA=true
 ```
 
 ## Next Steps
@@ -193,24 +217,37 @@ enableRealDataMode(); // Must call this after initialization
 
 ## Quick Reference
 
+### Environment Variable
+
+```env
+# Toggle between real and mock data (in backend/.env)
+USE_KITE_REAL_DATA=true   # Use real Kite API (production)
+USE_KITE_REAL_DATA=false  # Use mock data (development/testing)
+```
+
 ### Initialization Functions
 
 ```typescript
-// Initialize Kite API after login
+// Initialize Kite API after login (respects USE_KITE_REAL_DATA env var)
 await initializeKiteForUser(apiKey, accessToken);
-
-// Enable real-time data
-enableRealDataMode();
 
 // Subscribe to stocks
 await subscribeToWatchlist(['RELIANCE', 'TCS']);
 
 // Check status
 const status = getKiteStatus();
-console.log(status); // { connected: true, subscribedInstruments: 5, ... }
+console.log(status);
+// {
+//   envUseRealData: true,        // From .env file
+//   useRealData: true,           // Currently active
+//   connected: true,
+//   subscribedInstruments: 5,
+//   dataSource: 'Kite API (Real)' or 'Mock Data (Simulated)'
+// }
 
-// Disable real data (use mock)
-disableRealDataMode();
+// Manual override (rarely needed - prefer USE_KITE_REAL_DATA env var)
+enableRealDataMode();   // Force enable real data
+disableRealDataMode();  // Force enable mock data
 ```
 
 ### Market Hours (IST)

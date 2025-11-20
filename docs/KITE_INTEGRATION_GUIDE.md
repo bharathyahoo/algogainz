@@ -51,7 +51,18 @@ KITE_REDIRECT_URL=http://localhost:3000/auth/callback
 
 # For production, use your domain:
 # KITE_REDIRECT_URL=https://yourdomain.com/auth/callback
+
+# Toggle between real Kite data and mock data
+# Set to 'true' to use real Kite API, 'false' to use mock data (default: false)
+# Change this value and restart your server to switch modes
+USE_KITE_REAL_DATA=false
 ```
+
+**Important**: The `USE_KITE_REAL_DATA` environment variable controls whether the app uses real Kite API data or mock data. Set it to:
+- `true` - Use real market data from Kite API (for production)
+- `false` - Use mock/simulated data (for development/testing)
+
+This allows you to easily switch between modes without changing code!
 
 ### Frontend Environment Variables
 
@@ -105,22 +116,20 @@ router.get('/callback', async (req, res) => {
 
 async function initializeKiteRealData(apiKey: string, accessToken: string) {
   try {
-    // Fetch and cache instrument mappings (takes ~5-10 seconds)
-    console.log('📥 Fetching instruments from Kite...');
-    await instrumentService.fetchInstruments(apiKey);
+    // Initialize Kite (automatically uses USE_KITE_REAL_DATA from .env)
+    // If USE_KITE_REAL_DATA=true, it will:
+    //   1. Fetch and cache instrument mappings (~5-10 seconds)
+    //   2. Connect to Kite WebSocket
+    //   3. Enable real data mode
+    // If USE_KITE_REAL_DATA=false, it will:
+    //   1. Skip Kite initialization
+    //   2. Use mock data mode
+    await initializeKiteForUser(apiKey, accessToken);
 
-    // Initialize Kite WebSocket connection
-    console.log('🔌 Connecting to Kite WebSocket...');
-    await wsServer.initializeKiteData(apiKey, accessToken);
-
-    // Enable real data mode
-    wsServer.setUseRealData(true);
-
-    console.log('✅ Kite real-time data enabled');
+    console.log('✅ Kite initialization complete');
   } catch (error) {
     console.error('❌ Failed to initialize Kite data:', error);
-    // Fall back to mock data
-    wsServer.setUseRealData(false);
+    // Automatically falls back to mock data on error
   }
 }
 ```
@@ -453,17 +462,20 @@ To enable real Kite data in AlgoGainz:
 
 1. **Get API credentials** from Kite Connect developer portal
 2. **Add to environment variables** (backend and frontend .env files)
-3. **Initialize on authentication**: Call `wsServer.initializeKiteData()` after user logs in
-4. **Enable real data mode**: Call `wsServer.setUseRealData(true)`
+3. **Set `USE_KITE_REAL_DATA=true`** in backend/.env to enable real data
+4. **Initialize on authentication**: Call `initializeKiteForUser()` after user logs in
 5. **Subscribe to symbols**: Automatically done when users add to watchlist
 6. **Test during market hours**: Verify prices update every second
 7. **Handle token expiry**: Re-authenticate users every 24 hours
 
 The system will automatically:
-- Fetch and cache 50,000+ instrument mappings
-- Connect to Kite WebSocket
+- Check `USE_KITE_REAL_DATA` environment variable
+- Fetch and cache 50,000+ instrument mappings (if real data mode)
+- Connect to Kite WebSocket (if real data mode)
 - Parse binary tick data
 - Update prices in real-time
-- Fall back to mock data on errors
+- Fall back to mock data on errors or if `USE_KITE_REAL_DATA=false`
 
-**Next Steps**: See `backend/src/index.ts` for the complete initialization example.
+**Toggle Modes**: Simply change `USE_KITE_REAL_DATA` in `.env` and restart your server - no code changes needed!
+
+**Next Steps**: See `backend/src/utils/kiteInitializer.ts` for the complete initialization functions.

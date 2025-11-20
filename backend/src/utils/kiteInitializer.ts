@@ -52,7 +52,16 @@ export async function initializeKiteForUser(
   accessToken: string
 ): Promise<boolean> {
   try {
-    console.log('🔧 Initializing Kite API...');
+    // Check if real data mode is enabled via environment variable
+    const useRealData = process.env.USE_KITE_REAL_DATA === 'true';
+
+    if (!useRealData) {
+      console.log('📊 USE_KITE_REAL_DATA=false - Using mock data mode');
+      wsServer.setUseRealData(false);
+      return true; // Return success but use mock data
+    }
+
+    console.log('🔧 Initializing Kite API (USE_KITE_REAL_DATA=true)...');
 
     // Step 1: Fetch and cache instrument mappings
     // This fetches the complete list of ~50,000 instruments from Kite
@@ -70,13 +79,21 @@ export async function initializeKiteForUser(
     const kiteClient = getKiteWebSocketClient();
     if (kiteClient && kiteClient.isClientConnected()) {
       console.log('✅ Connected to Kite WebSocket');
+
+      // Step 3: Enable real data mode
+      wsServer.setUseRealData(true);
+      console.log('✅ Real data mode enabled');
+
       return true;
     } else {
-      console.warn('⚠️  Kite WebSocket connection failed');
+      console.warn('⚠️  Kite WebSocket connection failed - falling back to mock data');
+      wsServer.setUseRealData(false);
       return false;
     }
   } catch (error: any) {
     console.error('❌ Failed to initialize Kite API:', error.message);
+    console.log('⚠️  Falling back to mock data mode');
+    wsServer.setUseRealData(false);
     return false;
   }
 }
@@ -84,18 +101,23 @@ export async function initializeKiteForUser(
 /**
  * Enable real data mode (switch from mock to Kite API)
  *
- * Call this after successful initialization to start receiving
- * real-time price updates from Kite.
+ * Note: This is now controlled by the USE_KITE_REAL_DATA environment variable.
+ * This function is mainly for runtime toggling in special cases.
  *
  * @example
  * ```typescript
- * const initialized = await initializeKiteForUser(apiKey, accessToken);
- * if (initialized) {
- *   enableRealDataMode();
- * }
+ * // Typically not needed - use USE_KITE_REAL_DATA env var instead
+ * enableRealDataMode();
  * ```
  */
 export function enableRealDataMode(): void {
+  const envSetting = process.env.USE_KITE_REAL_DATA === 'true';
+
+  if (!envSetting) {
+    console.warn('⚠️  USE_KITE_REAL_DATA is set to false in environment variables');
+    console.warn('⚠️  Consider setting USE_KITE_REAL_DATA=true in .env instead of calling this function');
+  }
+
   wsServer.setUseRealData(true);
   console.log('✅ Real data mode enabled - Using Kite API for live prices');
 }
@@ -124,19 +146,32 @@ export function disableRealDataMode(): void {
  * ```typescript
  * const status = getKiteStatus();
  * console.log('Connected:', status.connected);
+ * console.log('Using real data:', status.useRealData);
  * console.log('Subscribed instruments:', status.subscribedInstruments);
  * ```
  */
 export function getKiteStatus() {
   const kiteClient = getKiteWebSocketClient();
   const instrumentStats = instrumentService.getStats();
+  const envUseRealData = process.env.USE_KITE_REAL_DATA === 'true';
+  const wsStats = wsServer.getStats();
 
   return {
+    // Environment configuration
+    envUseRealData, // What's set in .env file
+    useRealData: wsStats.useRealData || false, // What's currently active
+
+    // WebSocket connection status
     connected: kiteClient?.isClientConnected() || false,
     subscribedInstruments: kiteClient?.getSubscribedTokens().length || 0,
+
+    // Instrument cache status
     cachedInstruments: instrumentStats.cachedInstruments,
     cacheValid: instrumentStats.cacheValid,
     lastFetch: instrumentStats.lastFetchTime,
+
+    // Data source info
+    dataSource: wsStats.useRealData ? 'Kite API (Real)' : 'Mock Data (Simulated)',
   };
 }
 
