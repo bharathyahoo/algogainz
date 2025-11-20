@@ -50,6 +50,7 @@ class WebSocketService {
   private maxReconnectAttempts = 10;
   private userId: string = '';
   private token: string = '';
+  private currentMarketStatus: MarketStatusUpdate | null = null; // Store current market status
 
   /**
    * Connect to WebSocket server
@@ -151,6 +152,11 @@ class WebSocketService {
     this.socket.on('marketStatus', (data: MarketStatusUpdate) => {
       console.log('[WebSocket] Received marketStatus event:', data);
       console.log('[WebSocket] Number of marketStatus callbacks:', this.marketStatusCallbacks.size);
+
+      // Store the current market status
+      this.currentMarketStatus = data;
+
+      // Notify all registered callbacks
       this.marketStatusCallbacks.forEach((callback) => callback(data));
     });
 
@@ -230,6 +236,13 @@ class WebSocketService {
    */
   onMarketStatus(callback: MarketStatusCallback): () => void {
     this.marketStatusCallbacks.add(callback);
+
+    // Immediately call with current status if available
+    if (this.currentMarketStatus) {
+      console.log('[WebSocket] Providing cached market status:', this.currentMarketStatus);
+      callback(this.currentMarketStatus);
+    }
+
     return () => this.marketStatusCallbacks.delete(callback);
   }
 
