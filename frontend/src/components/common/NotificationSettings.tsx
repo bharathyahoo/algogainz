@@ -21,7 +21,7 @@ import {
   NotificationsOff as NotificationsOffIcon,
   VolumeUp as VolumeUpIcon,
   VolumeOff as VolumeOffIcon,
-  TestTube as TestTubeIcon,
+  Send as SendIcon,
 } from '@mui/icons-material';
 import { notificationService } from '../../services/notificationService';
 
@@ -150,7 +150,7 @@ export const NotificationSettings: React.FC = () => {
             {/* Test Notification */}
             <MenuItem onClick={handleTestNotification}>
               <ListItemIcon>
-                <TestTubeIcon />
+                <SendIcon />
               </ListItemIcon>
               <ListItemText
                 primary="Test Notification"

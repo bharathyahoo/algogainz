@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import {
   Notifications as NotificationsIcon,
-  NotificationsOff as NotificationsOffIcon,
 } from '@mui/icons-material';
 import { notificationService } from '../../services/notificationService';
 import { useSelector } from 'react-redux';
@@ -21,7 +20,6 @@ import type { RootState } from '../../store';
 
 export const NotificationPermissionHandler: React.FC = () => {
   const [showPrompt, setShowPrompt] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'default'>('default');
   const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
@@ -38,9 +36,6 @@ export const NotificationPermissionHandler: React.FC = () => {
         setShowPrompt(true);
       }, 3000);
     }
-
-    // Update permission status
-    setPermissionStatus(notificationService.getPermissionStatus());
   }, [isAuthenticated]);
 
   const checkShouldPrompt = (): boolean => {
@@ -66,7 +61,6 @@ export const NotificationPermissionHandler: React.FC = () => {
 
   const handleEnableNotifications = async () => {
     const permission = await notificationService.requestPermission();
-    setPermissionStatus(permission);
 
     if (permission === 'granted') {
       // Show a test notification
