@@ -1,15 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import watchlistReducer from './watchlistSlice';
+import holdingsReducer from './holdingsSlice';
+import transactionsReducer from './transactionsSlice';
+import dashboardReducer from './dashboardSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     watchlist: watchlistReducer,
-    // Other reducers will be added here:
-    // holdings: holdingsReducer,
-    // transactions: transactionsReducer,
-    // dashboard: dashboardReducer,
+    holdings: holdingsReducer,
+    transactions: transactionsReducer,
+    dashboard: dashboardReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
