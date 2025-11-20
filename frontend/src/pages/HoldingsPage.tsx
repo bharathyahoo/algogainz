@@ -15,7 +15,9 @@ import ExitStrategyDialog from '../components/holdings/ExitStrategyDialog';
 import OrderDialog from '../components/trading/OrderDialog';
 import { ConnectionStatusIndicator } from '../components/common/ConnectionStatus';
 import { MarketStatusBanner } from '../components/common/MarketStatusBanner';
-import { usePriceUpdates, useOnPriceUpdate } from '../hooks/useWebSocket';
+import { AlertList } from '../components/holdings/AlertList';
+import { usePriceUpdates, useOnPriceUpdate, useOnAlert } from '../hooks/useWebSocket';
+import { websocketService, type Alert as AlertType } from '../services/websocketService';
 
 const HoldingsPage: React.FC = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -24,9 +26,11 @@ const HoldingsPage: React.FC = () => {
   const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
   const [exitStrategyDialogOpen, setExitStrategyDialogOpen] = useState(false);
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
+  const [alerts, setAlerts] = useState<AlertType[]>([]);
 
   useEffect(() => {
     loadHoldings();
+    loadActiveAlerts();
   }, []);
 
   const loadHoldings = async () => {
@@ -41,6 +45,48 @@ const HoldingsPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const loadActiveAlerts = () => {
+    // Request active alerts from server
+    websocketService.getActiveAlerts();
+  };
+
+  // Listen for active alerts response
+  useEffect(() => {
+    const unsubscribe = websocketService.onActiveAlerts((activeAlerts) => {
+      console.log('[HoldingsPage] Received active alerts:', activeAlerts);
+      setAlerts(activeAlerts);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Listen for new alerts
+  useOnAlert(
+    useCallback((newAlert: AlertType) => {
+      console.log('[HoldingsPage] New alert received:', newAlert);
+
+      // Add to alerts list if not already present
+      setAlerts((prevAlerts) => {
+        const exists = prevAlerts.some(
+          (a) => a.holdingId === newAlert.holdingId && a.type === newAlert.type
+        );
+        if (!exists) {
+          return [...prevAlerts, newAlert];
+        }
+        return prevAlerts;
+      });
+
+      // Show browser notification if supported
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('AlgoGainz Alert', {
+          body: newAlert.message,
+          icon: '/logo192.png',
+          badge: '/logo192.png',
+        });
+      }
+    }, [])
+  );
 
   // Subscribe to WebSocket price updates for all holdings
   const holdingSymbols = holdings.map((h) => h.stockSymbol);
@@ -98,6 +144,25 @@ const HoldingsPage: React.FC = () => {
     setSellDialogOpen(false);
   };
 
+  const handleDismissAlert = (holdingId: string, type: 'PROFIT_TARGET' | 'STOP_LOSS') => {
+    // Remove from local state
+    setAlerts((prevAlerts) =>
+      prevAlerts.filter((a) => !(a.holdingId === holdingId && a.type === type))
+    );
+
+    // Send dismissal to server
+    websocketService.dismissAlert(holdingId, type);
+  };
+
+  const handleQuickSell = (alert: AlertType) => {
+    // Find the holding for this alert
+    const holding = holdings.find((h) => h.id === alert.holdingId);
+    if (holding) {
+      setSelectedHolding(holding);
+      setSellDialogOpen(true);
+    }
+  };
+
   // Calculate portfolio totals
   const totalInvested = holdings.reduce((sum, h) => sum + h.totalInvested, 0);
   const totalCurrentValue = holdings.reduce(
@@ -135,6 +200,13 @@ const HoldingsPage: React.FC = () => {
           manually recorded. Direct Zerodha Kite trades are NOT automatically synchronized.
         </Typography>
       </Alert>
+
+      {/* Active Alerts */}
+      <AlertList
+        alerts={alerts}
+        onDismiss={handleDismissAlert}
+        onQuickSell={handleQuickSell}
+      />
 
       {/* Portfolio Summary */}
       {holdings.length > 0 && (
