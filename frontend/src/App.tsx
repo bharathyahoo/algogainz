@@ -13,7 +13,6 @@ import { useWebSocketConnection } from './hooks/useWebSocket';
 
 // Lazy-loaded pages (code splitting)
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const WatchlistPage = lazy(() => import('./pages/WatchlistPage'));
@@ -81,7 +80,7 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="/auth/success" element={<AuthCallbackPage />} />
               <Route path="/auth/error" element={<AuthCallbackPage />} />
 
