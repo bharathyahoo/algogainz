@@ -1,11 +1,13 @@
 import express, { Request, Response } from 'express';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import { PrismaClient, AuthProvider } from '@prisma/client';
 import { initializeKiteForUser, subscribeToWatchlist } from '../utils/kiteInitializer';
 
 const router = express.Router();
 const prisma = new PrismaClient();
+const SALT_ROUNDS = 10;
 
 /**
  * Step 1: Initiate Kite Login
@@ -90,24 +92,45 @@ router.get('/callback', async (req: Request, res: Response) => {
     const { access_token, user_id, user_name, email } = sessionResponse.data.data;
 
     // Create or update user in database
-    const user = await prisma.user.upsert({
+    // First try to find by kiteUserId, then by email
+    let user = await prisma.user.findFirst({
       where: {
-        kiteUserId: user_id
-      },
-      update: {
-        accessToken: access_token,
-        email: email || undefined,
-        tokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-      },
-      create: {
-        kiteUserId: user_id,
-        accessToken: access_token,
-        apiKey: apiKey,
-        apiSecret: apiSecret,
-        email: email || undefined,
-        tokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+        OR: [
+          { kiteUserId: user_id },
+          { email: email }
+        ]
       }
     });
+
+    if (user) {
+      // Update existing user with Kite credentials
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          kiteUserId: user_id,
+          accessToken: access_token,
+          apiKey: apiKey,
+          apiSecret: apiSecret,
+          tokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          // If user registered with email first, keep their auth provider
+          // Otherwise set to ZERODHA
+          authProvider: user.authProvider === AuthProvider.EMAIL ? user.authProvider : AuthProvider.ZERODHA
+        }
+      });
+    } else {
+      // Create new user
+      user = await prisma.user.create({
+        data: {
+          email: email || `${user_id}@zerodha.temp`, // Temp email if not provided
+          kiteUserId: user_id,
+          accessToken: access_token,
+          apiKey: apiKey,
+          apiSecret: apiSecret,
+          authProvider: AuthProvider.ZERODHA,
+          tokenExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        }
+      });
+    }
 
     // Initialize Kite API for real-time data (respects USE_KITE_REAL_DATA env var)
     try {
@@ -232,6 +255,245 @@ router.get('/me', async (req: Request, res: Response) => {
       }
     });
   }
+});
+
+/**
+ * Email/Password Registration
+ * POST /api/auth/register
+ */
+router.post('/register', async (req: Request, res: Response) => {
+  try {
+    const { email, password, name } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Email and password are required'
+        }
+      });
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_EMAIL',
+          message: 'Invalid email format'
+        }
+      });
+    }
+
+    // Password strength validation
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'WEAK_PASSWORD',
+          message: 'Password must be at least 8 characters'
+        }
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        error: {
+          code: 'USER_EXISTS',
+          message: 'An account with this email already exists'
+        }
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name: name || undefined,
+        authProvider: AuthProvider.EMAIL,
+        emailVerified: false
+      }
+    });
+
+    // Create JWT token
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
+    }
+
+    const payload = {
+      userId: user.id,
+      userName: user.name || email.split('@')[0],
+      email: user.email,
+      kiteAccessToken: null
+    };
+
+    const token = jwt.sign(payload, jwtSecret, {
+      expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          authProvider: user.authProvider,
+          kiteConnected: false
+        }
+      },
+      message: 'Registration successful'
+    });
+
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'REGISTRATION_FAILED',
+        message: error.message || 'Registration failed'
+      }
+    });
+  }
+});
+
+/**
+ * Email/Password Login
+ * POST /api/auth/login/email
+ */
+router.post('/login/email', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Email and password are required'
+        }
+      });
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Invalid email or password'
+        }
+      });
+    }
+
+    // Check if user has password (might be Zerodha-only user)
+    if (!user.password) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'NO_PASSWORD',
+          message: 'This account uses Zerodha login. Please login with Zerodha or set a password.'
+        }
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: 'INVALID_CREDENTIALS',
+          message: 'Invalid email or password'
+        }
+      });
+    }
+
+    // Create JWT token
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET not configured');
+    }
+
+    const payload = {
+      userId: user.id,
+      userName: user.name || email.split('@')[0],
+      email: user.email,
+      kiteAccessToken: user.accessToken || null
+    };
+
+    const token = jwt.sign(payload, jwtSecret, {
+      expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any
+    });
+
+    res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          authProvider: user.authProvider,
+          kiteConnected: !!user.kiteUserId && !!user.accessToken
+        }
+      },
+      message: 'Login successful'
+    });
+
+  } catch (error: any) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'LOGIN_FAILED',
+        message: error.message || 'Login failed'
+      }
+    });
+  }
+});
+
+/**
+ * Link Zerodha account to existing email user
+ * GET /api/auth/link-zerodha
+ * Redirects to Zerodha login for linking
+ */
+router.get('/link-zerodha', (req: Request, res: Response) => {
+  const apiKey = process.env.KITE_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'MISSING_API_KEY',
+        message: 'Kite API key not configured'
+      }
+    });
+  }
+
+  // Redirect to Kite login URL with link mode
+  const kiteLoginUrl = `https://kite.zerodha.com/connect/login?api_key=${apiKey}&v=3`;
+  res.redirect(kiteLoginUrl);
 });
 
 export default router;
