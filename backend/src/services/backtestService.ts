@@ -4,7 +4,7 @@
  * Fetches historical data, applies trading strategies, and calculates performance metrics
  */
 
-const technicalAnalysisService = require('./technicalAnalysisService');
+import { RSI, MACD, SMA, EMA } from 'technicalindicators';
 import { createKiteService } from './kiteService';
 
 /**
@@ -221,31 +221,41 @@ class BacktestService {
    */
   private async calculateIndicators(historicalData: any[]): Promise<any[]> {
     const closePrices = historicalData.map((candle) => candle.close);
-    const highPrices = historicalData.map((candle) => candle.high);
-    const lowPrices = historicalData.map((candle) => candle.low);
-    const volumes = historicalData.map((candle) => candle.volume);
 
     // Calculate RSI (14 period)
-    const rsiValues = technicalAnalysisService.calculateRSI(closePrices, 14);
+    const rsiValues = RSI.calculate({ values: closePrices, period: 14 });
 
     // Calculate MACD (12, 26, 9)
-    const macdData = technicalAnalysisService.calculateMACD(closePrices, 12, 26, 9);
+    const macdData = MACD.calculate({
+      values: closePrices,
+      fastPeriod: 12,
+      slowPeriod: 26,
+      signalPeriod: 9,
+      SimpleMAOscillator: false,
+      SimpleMASignal: false,
+    });
 
     // Calculate SMA (50 period)
-    const sma50 = technicalAnalysisService.calculateSMA(closePrices, 50);
+    const sma50 = SMA.calculate({ values: closePrices, period: 50 });
 
     // Calculate EMA (20 period)
-    const ema20 = technicalAnalysisService.calculateEMA(closePrices, 20);
+    const ema20 = EMA.calculate({ values: closePrices, period: 20 });
+
+    // Pad arrays to match historicalData length (indicators have fewer values at start)
+    const rsiPadded = [...Array(closePrices.length - rsiValues.length).fill(null), ...rsiValues];
+    const macdPadded = [...Array(closePrices.length - macdData.length).fill(null), ...macdData];
+    const sma50Padded = [...Array(closePrices.length - sma50.length).fill(null), ...sma50];
+    const ema20Padded = [...Array(closePrices.length - ema20.length).fill(null), ...ema20];
 
     // Attach indicators to each candle
     return historicalData.map((candle, index) => ({
       ...candle,
-      rsi: rsiValues[index],
-      macd: macdData[index]?.macd,
-      macdSignal: macdData[index]?.signal,
-      macdHistogram: macdData[index]?.histogram,
-      sma50: sma50[index],
-      ema20: ema20[index],
+      rsi: rsiPadded[index],
+      macd: macdPadded[index]?.MACD,
+      macdSignal: macdPadded[index]?.signal,
+      macdHistogram: macdPadded[index]?.histogram,
+      sma50: sma50Padded[index],
+      ema20: ema20Padded[index],
     }));
   }
 
