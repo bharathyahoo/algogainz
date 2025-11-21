@@ -141,14 +141,19 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
       },
     });
 
-    res.json({
+    console.log(`[Backtest] Saved to DB with id: ${savedResult.id}`);
+
+    const responseData = {
       success: true,
       data: {
         id: savedResult.id,
         ...result,
       },
       message: 'Backtest completed successfully',
-    });
+    };
+    console.log('[Backtest] Sending response...');
+    res.json(responseData);
+    console.log('[Backtest] Response sent successfully');
   } catch (error: any) {
     console.error('Backtest error:', error);
 
