@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -15,6 +15,8 @@ import {
   Chip,
   Alert,
   InputAdornment,
+  Autocomplete,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,10 +24,17 @@ import {
   PlayArrow as PlayArrowIcon,
 } from '@mui/icons-material';
 import type { BacktestConfig, StrategyCondition, ExitCondition } from '../../types';
+import { watchlistService } from '../../services/watchlistService';
 
 interface StrategyBuilderFormProps {
   onSubmit: (config: BacktestConfig) => void;
   isRunning: boolean;
+}
+
+interface StockOption {
+  tradingsymbol: string;
+  name: string;
+  exchange: string;
 }
 
 const StrategyBuilderForm: React.FC<StrategyBuilderFormProps> = ({ onSubmit, isRunning }) => {
@@ -35,6 +44,34 @@ const StrategyBuilderForm: React.FC<StrategyBuilderFormProps> = ({ onSubmit, isR
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [initialCapital, setInitialCapital] = useState('100000');
+
+  // Stock search
+  const [stockOptions, setStockOptions] = useState<StockOption[]>([]);
+  const [stockLoading, setStockLoading] = useState(false);
+  const [stockInputValue, setStockInputValue] = useState('');
+
+  // Debounced stock search
+  const searchStocks = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setStockOptions([]);
+      return;
+    }
+
+    setStockLoading(true);
+    try {
+      const results = await watchlistService.searchStocks(query);
+      setStockOptions(results.map((r: any) => ({
+        tradingsymbol: r.tradingsymbol,
+        name: r.name || r.tradingsymbol,
+        exchange: r.exchange || 'NSE',
+      })));
+    } catch (error) {
+      console.error('Stock search failed:', error);
+      setStockOptions([]);
+    } finally {
+      setStockLoading(false);
+    }
+  }, []);
 
   // Entry conditions
   const [entryConditions, setEntryConditions] = useState<StrategyCondition[]>([
@@ -169,15 +206,58 @@ const StrategyBuilderForm: React.FC<StrategyBuilderFormProps> = ({ onSubmit, isR
         </Grid>
 
         <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Stock Symbol"
-            value={stockSymbol}
-            onChange={(e) => setStockSymbol(e.target.value.toUpperCase())}
-            error={!!errors.stockSymbol}
-            helperText={errors.stockSymbol || 'e.g., RELIANCE, TCS, INFY'}
-            required
+          <Autocomplete
+            freeSolo
+            options={stockOptions}
+            getOptionLabel={(option) =>
+              typeof option === 'string' ? option : option.tradingsymbol
+            }
+            renderOption={(props, option) => (
+              <li {...props} key={option.tradingsymbol}>
+                <Box>
+                  <Typography variant="body2" fontWeight={600}>
+                    {option.tradingsymbol}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {option.name} ({option.exchange})
+                  </Typography>
+                </Box>
+              </li>
+            )}
+            inputValue={stockInputValue}
+            onInputChange={(_, newValue) => {
+              setStockInputValue(newValue);
+              setStockSymbol(newValue.toUpperCase());
+              searchStocks(newValue);
+            }}
+            onChange={(_, newValue) => {
+              if (typeof newValue === 'string') {
+                setStockSymbol(newValue.toUpperCase());
+              } else if (newValue) {
+                setStockSymbol(newValue.tradingsymbol);
+                setStockInputValue(newValue.tradingsymbol);
+              }
+            }}
+            loading={stockLoading}
             disabled={isRunning}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Stock Symbol"
+                error={!!errors.stockSymbol}
+                helperText={errors.stockSymbol || 'Type to search (e.g., RELIANCE, TCS)'}
+                required
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {stockLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
           />
         </Grid>
 
