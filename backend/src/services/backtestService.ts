@@ -4,7 +4,7 @@
  * Fetches historical data, applies trading strategies, and calculates performance metrics
  */
 
-const technicalAnalysisService = require('./technicalAnalysis');
+const technicalAnalysisService = require('./technicalAnalysisService');
 const kiteService = require('./kiteService');
 
 /**
