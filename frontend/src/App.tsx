@@ -19,6 +19,7 @@ const WatchlistPage = lazy(() => import('./pages/WatchlistPage'));
 const HoldingsPage = lazy(() => import('./pages/HoldingsPage'));
 const TransactionsPage = lazy(() => import('./pages/TransactionsPage'));
 const ReportsPage = lazy(() => import('./pages/ReportsPage'));
+const BacktestPage = lazy(() => import('./pages/BacktestPage'));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -129,6 +130,16 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <ReportsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/backtest"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <BacktestPage />
                     </Layout>
                   </ProtectedRoute>
                 }

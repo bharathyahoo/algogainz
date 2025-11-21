@@ -26,6 +26,7 @@ model User {
   transactions   Transaction[]
   holdings       Holding[]
   orders         Order[]
+  backtests      BacktestResult[]
 
   @@map("users")
 }
@@ -189,4 +190,72 @@ model Category {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("categories")
+}
+
+// Backtest Result model - stores historical strategy backtesting results
+model BacktestResult {
+  id                  String   @id @default(uuid())
+  userId              String   @map("user_id")
+
+  // Strategy configuration
+  strategyName        String   @map("strategy_name")
+  stockSymbol         String   @map("stock_symbol")
+  companyName         String   @map("company_name")
+  startDate           DateTime @map("start_date")
+  endDate             DateTime @map("end_date")
+  initialCapital      Float    @default(100000) @map("initial_capital") // Starting capital for backtest
+
+  // Entry conditions (stored as JSON)
+  entryConditions     Json     @map("entry_conditions")
+  // Example: [{ indicator: 'RSI', operator: '<', value: 30 }, { indicator: 'MACD', operator: 'crossover', combinator: 'AND' }]
+
+  // Exit conditions (stored as JSON)
+  exitConditions      Json     @map("exit_conditions")
+  // Example: [{ type: 'profit_target', value: 10 }, { type: 'stop_loss', value: 3 }]
+
+  // Performance metrics
+  totalTrades         Int      @default(0) @map("total_trades")
+  winningTrades       Int      @default(0) @map("winning_trades")
+  losingTrades        Int      @default(0) @map("losing_trades")
+  winRate             Float    @default(0) @map("win_rate") // Percentage
+
+  totalReturn         Float    @default(0) @map("total_return") // Final capital - initial capital
+  totalReturnPct      Float    @default(0) @map("total_return_pct") // Percentage
+  finalCapital        Float    @default(0) @map("final_capital")
+
+  avgProfitPerTrade   Float    @default(0) @map("avg_profit_per_trade")
+  avgLossPerTrade     Float    @default(0) @map("avg_loss_per_trade")
+  profitFactor        Float    @default(0) @map("profit_factor") // Gross profit / Gross loss
+
+  largestWin          Float    @default(0) @map("largest_win")
+  largestLoss         Float    @default(0) @map("largest_loss")
+
+  maxDrawdown         Float    @default(0) @map("max_drawdown") // Maximum drawdown percentage
+  maxDrawdownAmount   Float    @default(0) @map("max_drawdown_amount")
+
+  sharpeRatio         Float?   @map("sharpe_ratio") // Risk-adjusted return
+  avgTradeDuration    Float?   @map("avg_trade_duration") // Average holding period in days
+
+  // Trade history (stored as JSON array)
+  tradeHistory        Json     @map("trade_history")
+  // Example: [{ entryDate, exitDate, entryPrice, exitPrice, quantity, pnl, pnlPct, type: 'WIN'/'LOSS' }]
+
+  // Equity curve data (stored as JSON array)
+  equityCurve         Json     @map("equity_curve")
+  // Example: [{ date, portfolioValue, cash, position }]
+
+  // Metadata
+  status              String   @default("COMPLETED") // RUNNING, COMPLETED, FAILED
+  errorMessage        String?  @map("error_message")
+  executionTime       Int?     @map("execution_time") // Time taken to run backtest (milliseconds)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stockSymbol])
+  @@index([userId, createdAt])
+  @@map("backtest_results")
 }

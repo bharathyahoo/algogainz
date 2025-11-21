@@ -187,3 +187,112 @@ export interface Alert {
   message: string;
   timestamp: string;
 }
+
+// Backtest types
+export type IndicatorType = 'RSI' | 'MACD' | 'SMA' | 'EMA' | 'PRICE';
+export type OperatorType = '<' | '>' | '=' | 'crossover' | 'crossunder';
+export type CombinatorType = 'AND' | 'OR';
+
+export interface StrategyCondition {
+  indicator: IndicatorType;
+  operator: OperatorType;
+  value: number | string;
+  combinator?: CombinatorType;
+}
+
+export type ExitConditionType = 'profit_target' | 'stop_loss' | 'time_based';
+
+export interface ExitCondition {
+  type: ExitConditionType;
+  value: number; // Percentage or days
+}
+
+export interface BacktestTrade {
+  entryDate: string;
+  exitDate: string;
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+  pnl: number;
+  pnlPct: number;
+  type: 'WIN' | 'LOSS';
+  holdingPeriod: number;
+}
+
+export interface EquityCurvePoint {
+  date: string;
+  portfolioValue: number;
+  cash: number;
+  position: number;
+}
+
+export interface BacktestConfig {
+  strategyName: string;
+  stockSymbol: string;
+  startDate: string;
+  endDate: string;
+  initialCapital: number;
+  entryConditions: StrategyCondition[];
+  exitConditions: ExitCondition[];
+}
+
+export interface BacktestResult {
+  id: string;
+  strategyName: string;
+  stockSymbol: string;
+  companyName: string;
+  startDate: string;
+  endDate: string;
+  initialCapital: number;
+  finalCapital: number;
+
+  // Performance metrics
+  totalReturn: number;
+  totalReturnPct: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  avgProfitPerTrade: number;
+  avgLossPerTrade: number;
+  profitFactor: number;
+  largestWin: number;
+  largestLoss: number;
+  maxDrawdown: number;
+  maxDrawdownAmount: number;
+  sharpeRatio?: number;
+  avgTradeDuration?: number;
+
+  // Trade data
+  tradeHistory: BacktestTrade[];
+  equityCurve: EquityCurvePoint[];
+
+  // Strategy config
+  entryConditions: StrategyCondition[];
+  exitConditions: ExitCondition[];
+
+  // Metadata
+  status: 'RUNNING' | 'COMPLETED' | 'FAILED';
+  errorMessage?: string;
+  executionTime?: number;
+  createdAt: string;
+}
+
+export interface BacktestSummary {
+  id: string;
+  strategyName: string;
+  stockSymbol: string;
+  companyName: string;
+  startDate: string;
+  endDate: string;
+  initialCapital: number;
+  finalCapital: number;
+  totalReturn: number;
+  totalReturnPct: number;
+  totalTrades: number;
+  winRate: number;
+  maxDrawdown: number;
+  sharpeRatio?: number;
+  status: string;
+  createdAt: string;
+}

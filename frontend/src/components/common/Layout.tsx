@@ -29,6 +29,7 @@ import {
   Logout,
   TrendingUp,
   Person,
+  Timeline,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../hooks/useRedux';
@@ -52,6 +53,7 @@ const navItems: NavItem[] = [
   { label: 'Watchlist', path: '/watchlist', icon: <Visibility /> },
   { label: 'Holdings', path: '/holdings', icon: <AccountBalance /> },
   { label: 'Transactions', path: '/transactions', icon: <Receipt /> },
+  { label: 'Backtest', path: '/backtest', icon: <Timeline /> },
   { label: 'Reports', path: '/reports', icon: <Assessment /> },
 ];
 
