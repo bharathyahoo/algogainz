@@ -160,9 +160,9 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ result }) => {
       <Grid item xs={6} sm={4} md={3}>
         <MetricCard
           title="Profit Factor"
-          value={result.profitFactor.toFixed(2)}
-          subtitle={result.profitFactor > 1 ? 'Profitable' : 'Unprofitable'}
-          color={result.profitFactor > 1 ? 'success' : 'error'}
+          value={result.profitFactor?.toFixed(2) ?? 'N/A'}
+          subtitle={result.profitFactor && result.profitFactor > 1 ? 'Profitable' : 'Unprofitable'}
+          color={result.profitFactor && result.profitFactor > 1 ? 'success' : 'error'}
           tooltip="Gross profit divided by gross loss"
         />
       </Grid>
