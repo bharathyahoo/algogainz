@@ -44,16 +44,14 @@ class BacktestService {
     pagination: { total: number; limit: number; offset: number };
   }> {
     try {
-      const response = await apiService.get<
-        ApiResponse<{
-          results: BacktestSummary[];
-          pagination: { total: number; limit: number; offset: number };
-        }>
-      >('/backtest/results', { params });
+      const response = await apiService.get<{
+        results: BacktestSummary[];
+        pagination: { total: number; limit: number; offset: number };
+      }>('/backtest/results', params);
 
       return {
-        results: response.data?.data?.results || [],
-        pagination: response.data?.data?.pagination || { total: 0, limit: 20, offset: 0 },
+        results: response.data?.results || [],
+        pagination: response.data?.pagination || { total: 0, limit: 20, offset: 0 },
       };
     } catch (error: any) {
       console.error('Failed to get backtest results:', error);
@@ -66,11 +64,11 @@ class BacktestService {
    */
   async getBacktestById(id: string): Promise<BacktestResult> {
     try {
-      const response = await apiService.get<ApiResponse<BacktestResult>>(`/backtest/${id}`);
-      if (!response.data?.data) {
+      const response = await apiService.get<BacktestResult>(`/backtest/${id}`);
+      if (!response.data) {
         throw new Error('Invalid response from server');
       }
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       console.error('Failed to get backtest result:', error);
       throw new Error(error.response?.data?.error?.message || 'Failed to get backtest result');
