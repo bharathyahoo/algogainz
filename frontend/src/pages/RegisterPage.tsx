@@ -14,7 +14,7 @@ import { TrendingUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authService } from '../services/authService';
-import { setCredentials } from '../store/authSlice';
+import { loginSuccess } from '../store/authSlice';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +48,7 @@ const RegisterPage: React.FC = () => {
 
       const user = authService.decodeToken(response.token);
       if (user) {
-        dispatch(setCredentials({ user, token: response.token }));
+        dispatch(loginSuccess({ user, token: response.token }));
       }
 
       navigate('/dashboard');
