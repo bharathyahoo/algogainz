@@ -30,6 +30,7 @@ import {
   TrendingUp,
   Person,
   Timeline,
+  Link as LinkIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../hooks/useRedux';
@@ -98,6 +99,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       dispatch(logout());
       navigate('/login');
     }
+  };
+
+  const handleConnectZerodha = () => {
+    handleMenuClose();
+    authService.linkZerodha();
   };
 
   const drawer = (
@@ -248,6 +254,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Typography>
               </Box>
               <Divider />
+              {!user?.kiteUserId && (
+                <MenuItem onClick={handleConnectZerodha}>
+                  <ListItemIcon>
+                    <LinkIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Connect Zerodha</ListItemText>
+                </MenuItem>
+              )}
               <MenuItem onClick={handleLogout}>
                 <ListItemIcon>
                   <Logout fontSize="small" />

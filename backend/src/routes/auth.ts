@@ -91,16 +91,26 @@ router.get('/callback', async (req: Request, res: Response) => {
 
     const { access_token, user_id, user_name, email } = sessionResponse.data.data;
 
+    // Check if this is a link operation (user ID stored in cookie)
+    const linkUserId = req.cookies?.link_user_id;
+
+    // Clear the link cookie
+    if (linkUserId) {
+      res.clearCookie('link_user_id');
+    }
+
     // Create or update user in database
-    // First try to find by kiteUserId, then by email
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { kiteUserId: user_id },
-          { email: email }
-        ]
-      }
-    });
+    // Priority: 1) Link user ID from cookie, 2) existing kiteUserId, 3) email match
+    let user = linkUserId
+      ? await prisma.user.findUnique({ where: { id: linkUserId } })
+      : await prisma.user.findFirst({
+          where: {
+            OR: [
+              { kiteUserId: user_id },
+              { email: email }
+            ]
+          }
+        });
 
     if (user) {
       // Update existing user with Kite credentials
@@ -476,10 +486,11 @@ router.post('/login/email', async (req: Request, res: Response) => {
 /**
  * Link Zerodha account to existing email user
  * GET /api/auth/link-zerodha
- * Redirects to Zerodha login for linking
+ * Requires JWT token as query param, stores user ID in cookie for callback
  */
 router.get('/link-zerodha', (req: Request, res: Response) => {
   const apiKey = process.env.KITE_API_KEY;
+  const token = req.query.token as string;
 
   if (!apiKey) {
     return res.status(500).json({
@@ -491,7 +502,23 @@ router.get('/link-zerodha', (req: Request, res: Response) => {
     });
   }
 
-  // Redirect to Kite login URL with link mode
+  // Verify token and get user ID
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+      // Store user ID in cookie for callback to use
+      res.cookie('link_user_id', decoded.userId, {
+        maxAge: 5 * 60 * 1000, // 5 minutes
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
+    } catch (err) {
+      // Invalid token, proceed without linking
+    }
+  }
+
+  // Redirect to Kite login URL
   const kiteLoginUrl = `https://kite.zerodha.com/connect/login?api_key=${apiKey}&v=3`;
   res.redirect(kiteLoginUrl);
 });

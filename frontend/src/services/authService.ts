@@ -80,7 +80,11 @@ export const authService = {
    */
   linkZerodha(): void {
     const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-    window.location.href = `${backendUrl}/auth/link-zerodha`;
+    const token = localStorage.getItem('token');
+    const url = token
+      ? `${backendUrl}/auth/link-zerodha?token=${encodeURIComponent(token)}`
+      : `${backendUrl}/auth/link-zerodha`;
+    window.location.href = url;
   },
 
   /**
