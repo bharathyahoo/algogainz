@@ -86,14 +86,19 @@ export async function initializeKiteForUser(
 
       return true;
     } else {
-      console.warn('⚠️  Kite WebSocket connection failed - falling back to mock data');
-      wsServer.setUseRealData(false);
+      // USE_KITE_REAL_DATA=true but connection failed - DO NOT fallback to mock
+      console.error('❌ Kite WebSocket connection failed - real data unavailable');
+      console.log('💡 Prices will show as unavailable until connection is restored');
+      // Keep useRealData=true so mock data is NOT used
+      wsServer.setUseRealData(true);
       return false;
     }
   } catch (error: any) {
+    // USE_KITE_REAL_DATA=true but error occurred - DO NOT fallback to mock
     console.error('❌ Failed to initialize Kite API:', error.message);
-    console.log('⚠️  Falling back to mock data mode');
-    wsServer.setUseRealData(false);
+    console.log('💡 Prices will show as unavailable until connection is restored');
+    // Keep useRealData=true so mock data is NOT used
+    wsServer.setUseRealData(true);
     return false;
   }
 }
