@@ -317,18 +317,24 @@ class WebSocketServer {
 
             console.log(`[RealData] Kite WebSocket connected: ${connected}`);
 
+            // Always set useRealData=true when USE_KITE_REAL_DATA=true (no fallback to mock)
+            this.setUseRealData(true);
+
             if (connected) {
-              this.setUseRealData(true);
               console.log('✅ Real data mode enabled for live prices');
             } else {
-              console.warn('⚠️ Kite WebSocket not connected after timeout, staying in mock mode');
+              console.error('❌ Kite WebSocket not connected - prices unavailable until connected');
             }
           }
         } else {
-          console.warn('⚠️ No Kite access token found for user');
+          // No token but USE_KITE_REAL_DATA=true - still set real mode (no mock fallback)
+          this.setUseRealData(true);
+          console.warn('⚠️ No Kite access token found - please login to Zerodha');
         }
       } catch (error: any) {
-        console.warn('⚠️ Could not initialize real data mode:', error.message);
+        // Error but USE_KITE_REAL_DATA=true - still set real mode (no mock fallback)
+        this.setUseRealData(true);
+        console.error('❌ Could not initialize real data mode:', error.message);
       }
     }
   }

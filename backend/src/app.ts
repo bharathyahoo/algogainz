@@ -2,6 +2,7 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 
 // Load environment variables first
@@ -66,6 +67,7 @@ app.use(securityHeaders); // Custom security headers
 // Body parsing middleware with size limits
 app.use(express.json({ limit: requestSizeLimits.json }));
 app.use(express.urlencoded({ extended: true, limit: requestSizeLimits.urlencoded }));
+app.use(cookieParser());
 
 // General API rate limiting
 app.use('/api/', apiLimiter);

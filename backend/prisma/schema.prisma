@@ -9,17 +9,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User model - stores Zerodha Kite authentication data
+// Auth provider enum
+enum AuthProvider {
+  EMAIL
+  ZERODHA
+}
+
+// User model - supports both email/password and Zerodha OAuth
 model User {
-  id             String   @id @default(uuid())
-  kiteUserId     String   @unique @map("kite_user_id")
-  accessToken    String?  @map("access_token")
-  tokenExpiry    DateTime? @map("token_expiry") // Kite tokens expire after 24 hours
-  apiKey         String   @map("api_key")
-  apiSecret      String   @map("api_secret")
-  email          String?  @unique
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id             String       @id @default(uuid())
+
+  // Common fields
+  email          String       @unique
+  name           String?
+  authProvider   AuthProvider @default(EMAIL) @map("auth_provider")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Email/password auth fields
+  password       String?      // Hashed password (null for Zerodha-only users)
+  emailVerified  Boolean      @default(false) @map("email_verified")
+
+  // Zerodha Kite auth fields (optional for email-only users)
+  kiteUserId     String?      @unique @map("kite_user_id")
+  accessToken    String?      @map("access_token")
+  tokenExpiry    DateTime?    @map("token_expiry")
+  apiKey         String?      @map("api_key")
+  apiSecret      String?      @map("api_secret")
 
   // Relations
   watchlist      Watchlist[]
