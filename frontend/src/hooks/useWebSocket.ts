@@ -44,6 +44,7 @@ export function useWebSocketConnection() {
  */
 export function usePriceUpdates(symbols: string[], enabled = true) {
   const prevSymbolsRef = useRef<string[]>([]);
+  const symbolsKey = symbols.sort().join(','); // Stable key for comparison
 
   useEffect(() => {
     if (!enabled || symbols.length === 0) return;
@@ -52,6 +53,12 @@ export function usePriceUpdates(symbols: string[], enabled = true) {
     if (!isConnected) {
       console.warn('[usePriceUpdates] Not connected to WebSocket');
       return;
+    }
+
+    // Check if symbols actually changed
+    const prevKey = prevSymbolsRef.current.sort().join(',');
+    if (symbolsKey === prevKey) {
+      return; // No change, skip
     }
 
     // Find new symbols to subscribe
@@ -66,16 +73,20 @@ export function usePriceUpdates(symbols: string[], enabled = true) {
       websocketService.unsubscribeFromSymbols(removedSymbols);
     }
 
-    prevSymbolsRef.current = symbols;
+    prevSymbolsRef.current = [...symbols];
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbolsKey, enabled]);
+
+  // Cleanup only on unmount
+  useEffect(() => {
     return () => {
-      // Cleanup: unsubscribe from all symbols
       if (prevSymbolsRef.current.length > 0) {
         websocketService.unsubscribeFromSymbols(prevSymbolsRef.current);
         prevSymbolsRef.current = [];
       }
     };
-  }, [symbols, enabled]);
+  }, []);
 }
 
 /**

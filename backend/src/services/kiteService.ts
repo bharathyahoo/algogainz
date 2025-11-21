@@ -109,11 +109,49 @@ export class KiteService {
   /**
    * Get list of all tradeable instruments
    * GET /instruments
+   * Note: Kite returns CSV data, we parse it to JSON array
    */
   async getInstruments(exchange?: string) {
     const url = exchange ? `/instruments/${exchange}` : '/instruments';
     const response = await this.client.get(url);
-    return response.data;
+
+    // Kite returns CSV data for instruments endpoint
+    const csvData = response.data;
+
+    // If already an array (mock data), return as-is
+    if (Array.isArray(csvData)) {
+      return csvData;
+    }
+
+    // Parse CSV string to array of objects
+    if (typeof csvData === 'string') {
+      const lines = csvData.trim().split('\n');
+      if (lines.length < 2) return [];
+
+      const headers = lines[0].split(',');
+      const instruments = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',');
+        const instrument: any = {};
+        headers.forEach((header, idx) => {
+          instrument[header.trim()] = values[idx]?.trim();
+        });
+        // Convert numeric fields
+        if (instrument.instrument_token) {
+          instrument.instrument_token = parseInt(instrument.instrument_token, 10);
+        }
+        instruments.push(instrument);
+      }
+      return instruments;
+    }
+
+    // If it's wrapped in data property
+    if (csvData?.data && Array.isArray(csvData.data)) {
+      return csvData.data;
+    }
+
+    return [];
   }
 
   /**

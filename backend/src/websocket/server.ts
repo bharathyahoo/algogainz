@@ -7,10 +7,13 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { corsOptions } from '../config/security';
 import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
 import { getCurrentMarketStatus } from '../utils/marketHours';
 import { alertService } from '../services/alertService';
 import { getKiteWebSocketClient, initializeKiteWebSocket } from './kiteWebSocket';
 import { instrumentService } from '../services/instrumentService';
+
+const prisma = new PrismaClient();
 
 interface ConnectedClient {
   userId: string;
@@ -61,18 +64,25 @@ class WebSocketServer {
    * Start periodic price updates for subscribed symbols
    */
   private startPriceUpdates(): void {
-    // Update prices every 2 seconds
+    // Configurable interval via env variable (default 2000ms)
+    const interval = parseInt(process.env.PRICE_UPDATE_INTERVAL_MS || '2000', 10);
+
     this.priceUpdateInterval = setInterval(() => {
       this.fetchAndBroadcastPrices();
-    }, 2000);
+    }, interval);
 
-    console.log('📊 Price update service started (2s interval)');
+    console.log(`📊 Price update service started (${interval / 1000}s interval)`);
   }
 
   /**
    * Fetch prices and broadcast to subscribers
    */
   private async fetchAndBroadcastPrices(): Promise<void> {
+    // Skip mock updates if using real Kite data
+    if (this.useRealData) {
+      return;
+    }
+
     const symbols = Array.from(this.symbolSubscriptions.keys());
 
     if (symbols.length === 0) {
@@ -235,7 +245,7 @@ class WebSocketServer {
   /**
    * Handle client authentication
    */
-  private handleAuthentication(socket: Socket, data: { userId: string; token: string }): void {
+  private async handleAuthentication(socket: Socket, data: { userId: string; token: string }): Promise<void> {
     // TODO: Validate JWT token
     const { userId, token } = data;
 
@@ -270,6 +280,57 @@ class WebSocketServer {
 
     console.log(`✅ Client authenticated: ${socket.id} (User: ${userId})`);
     console.log(`📊 Sent market status to ${socket.id}: ${currentMarketStatus.status}`);
+
+    // Initialize real data mode if enabled and not already initialized
+    const useRealDataEnv = process.env.USE_KITE_REAL_DATA === 'true';
+    console.log(`[RealData] ENV USE_KITE_REAL_DATA=${process.env.USE_KITE_REAL_DATA}, useRealData=${this.useRealData}`);
+
+    if (useRealDataEnv && !this.useRealData) {
+      try {
+        // Fetch user's Kite access token from database
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { accessToken: true }
+        });
+
+        console.log(`[RealData] User has accessToken: ${user?.accessToken ? 'yes' : 'no'}`);
+
+        if (user?.accessToken) {
+          const apiKey = process.env.KITE_API_KEY;
+          console.log(`[RealData] KITE_API_KEY: ${apiKey ? 'set' : 'not set'}`);
+
+          if (apiKey) {
+            console.log('🔧 Initializing Kite real data mode...');
+            await instrumentService.fetchInstruments(apiKey);
+            console.log('[RealData] Instruments fetched, initializing Kite data...');
+            await this.initializeKiteData(apiKey, user.accessToken);
+
+            // Wait for WebSocket connection (up to 5 seconds)
+            let connected = false;
+            for (let i = 0; i < 10; i++) {
+              const kiteClient = getKiteWebSocketClient();
+              connected = !!(kiteClient && kiteClient.isClientConnected());
+              if (connected) break;
+              console.log(`[RealData] Waiting for Kite WebSocket... (${i + 1}/10)`);
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            console.log(`[RealData] Kite WebSocket connected: ${connected}`);
+
+            if (connected) {
+              this.setUseRealData(true);
+              console.log('✅ Real data mode enabled for live prices');
+            } else {
+              console.warn('⚠️ Kite WebSocket not connected after timeout, staying in mock mode');
+            }
+          }
+        } else {
+          console.warn('⚠️ No Kite access token found for user');
+        }
+      } catch (error: any) {
+        console.warn('⚠️ Could not initialize real data mode:', error.message);
+      }
+    }
   }
 
   /**

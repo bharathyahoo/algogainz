@@ -110,7 +110,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         stockSymbol,
         companyName,
         exchange,
-        instrumentToken,
+        instrumentToken: String(instrumentToken),
         categories: categories || [],
         sortOrder
       }

@@ -24,8 +24,9 @@ const backtestLimiter = rateLimit({
  */
 router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId || (req as any).user.id;
     const kiteAccessToken = (req as any).user.kiteAccessToken;
+    console.log(`[Backtest Route] userId: ${userId}, token: ${kiteAccessToken ? kiteAccessToken.substring(0, 10) + '...' : 'EMPTY'}`);
     const {
       strategyName,
       stockSymbol,
@@ -97,6 +98,14 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
       kiteAccessToken
     );
 
+    console.log('[Backtest] Engine completed, saving to DB...');
+
+    // Helper to handle Infinity/NaN values for database storage
+    const sanitizeNumber = (value: number, defaultValue: number = 0): number => {
+      if (!Number.isFinite(value)) return defaultValue;
+      return value;
+    };
+
     // Save result to database
     const savedResult = await prisma.backtestResult.create({
       data: {
@@ -112,19 +121,19 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
         totalTrades: result.totalTrades,
         winningTrades: result.winningTrades,
         losingTrades: result.losingTrades,
-        winRate: result.winRate,
-        totalReturn: result.totalReturn,
-        totalReturnPct: result.totalReturnPct,
-        finalCapital: result.finalCapital,
-        avgProfitPerTrade: result.avgProfitPerTrade,
-        avgLossPerTrade: result.avgLossPerTrade,
-        profitFactor: result.profitFactor,
-        largestWin: result.largestWin,
-        largestLoss: result.largestLoss,
-        maxDrawdown: result.maxDrawdown,
-        maxDrawdownAmount: result.maxDrawdownAmount,
-        sharpeRatio: result.sharpeRatio,
-        avgTradeDuration: result.avgTradeDuration,
+        winRate: sanitizeNumber(result.winRate),
+        totalReturn: sanitizeNumber(result.totalReturn),
+        totalReturnPct: sanitizeNumber(result.totalReturnPct),
+        finalCapital: sanitizeNumber(result.finalCapital),
+        avgProfitPerTrade: sanitizeNumber(result.avgProfitPerTrade),
+        avgLossPerTrade: sanitizeNumber(result.avgLossPerTrade),
+        profitFactor: sanitizeNumber(result.profitFactor, 999999),
+        largestWin: sanitizeNumber(result.largestWin),
+        largestLoss: sanitizeNumber(result.largestLoss),
+        maxDrawdown: sanitizeNumber(result.maxDrawdown),
+        maxDrawdownAmount: sanitizeNumber(result.maxDrawdownAmount),
+        sharpeRatio: result.sharpeRatio ? sanitizeNumber(result.sharpeRatio) : null,
+        avgTradeDuration: result.avgTradeDuration ? sanitizeNumber(result.avgTradeDuration) : null,
         tradeHistory: result.tradeHistory,
         equityCurve: result.equityCurve,
         status: 'COMPLETED',
@@ -132,14 +141,19 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
       },
     });
 
-    res.json({
+    console.log(`[Backtest] Saved to DB with id: ${savedResult.id}`);
+
+    const responseData = {
       success: true,
       data: {
         id: savedResult.id,
         ...result,
       },
       message: 'Backtest completed successfully',
-    });
+    };
+    console.log('[Backtest] Sending response...');
+    res.json(responseData);
+    console.log('[Backtest] Response sent successfully');
   } catch (error: any) {
     console.error('Backtest error:', error);
 
@@ -159,7 +173,7 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
  */
 router.get('/results', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId || (req as any).user.id;
     const { limit = 20, offset = 0, symbol, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
 
     const where: any = {
@@ -200,11 +214,13 @@ router.get('/results', authMiddleware, async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: results,
-      pagination: {
-        total: totalCount,
-        limit: parseInt(String(limit)),
-        offset: parseInt(String(offset)),
+      data: {
+        results,
+        pagination: {
+          total: totalCount,
+          limit: parseInt(String(limit)),
+          offset: parseInt(String(offset)),
+        },
       },
     });
   } catch (error) {

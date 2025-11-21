@@ -227,7 +227,10 @@ export const ensureValidKiteToken = async (
       return;
     }
 
-    // Token is valid, proceed
+    // Token is valid - update req.user with fresh token from DB
+    if (req.user) {
+      req.user.kiteAccessToken = user.accessToken;
+    }
     next();
   } catch (error: any) {
     console.error('Kite token validation error:', error);
