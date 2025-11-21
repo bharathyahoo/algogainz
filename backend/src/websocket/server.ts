@@ -275,7 +275,10 @@ class WebSocketServer {
     console.log(`📊 Sent market status to ${socket.id}: ${currentMarketStatus.status}`);
 
     // Initialize real data mode if enabled and not already initialized
-    if (process.env.USE_KITE_REAL_DATA === 'true' && !this.useRealData) {
+    const useRealDataEnv = process.env.USE_KITE_REAL_DATA === 'true';
+    console.log(`[RealData] ENV USE_KITE_REAL_DATA=${process.env.USE_KITE_REAL_DATA}, useRealData=${this.useRealData}`);
+
+    if (useRealDataEnv && !this.useRealData) {
       try {
         // Fetch user's Kite access token from database
         const user = await prisma.user.findUnique({
@@ -283,19 +286,31 @@ class WebSocketServer {
           select: { accessToken: true }
         });
 
+        console.log(`[RealData] User has accessToken: ${user?.accessToken ? 'yes' : 'no'}`);
+
         if (user?.accessToken) {
           const apiKey = process.env.KITE_API_KEY;
+          console.log(`[RealData] KITE_API_KEY: ${apiKey ? 'set' : 'not set'}`);
+
           if (apiKey) {
             console.log('🔧 Initializing Kite real data mode...');
             await instrumentService.fetchInstruments(apiKey);
+            console.log('[RealData] Instruments fetched, initializing Kite data...');
             await this.initializeKiteData(apiKey, user.accessToken);
 
             const kiteClient = getKiteWebSocketClient();
-            if (kiteClient && kiteClient.isClientConnected()) {
+            const connected = kiteClient && kiteClient.isClientConnected();
+            console.log(`[RealData] Kite WebSocket connected: ${connected}`);
+
+            if (connected) {
               this.setUseRealData(true);
               console.log('✅ Real data mode enabled for live prices');
+            } else {
+              console.warn('⚠️ Kite WebSocket not connected, staying in mock mode');
             }
           }
+        } else {
+          console.warn('⚠️ No Kite access token found for user');
         }
       } catch (error: any) {
         console.warn('⚠️ Could not initialize real data mode:', error.message);
