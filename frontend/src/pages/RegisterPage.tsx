@@ -14,7 +14,7 @@ import { TrendingUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authService } from '../services/authService';
-import { setCredentials } from '../store/slices/authSlice';
+import { setCredentials } from '../store/authSlice';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();

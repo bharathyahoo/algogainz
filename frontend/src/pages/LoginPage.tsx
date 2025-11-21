@@ -16,7 +16,7 @@ import { TrendingUp, Security, Assessment, Notifications } from '@mui/icons-mate
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authService } from '../services/authService';
-import { setCredentials } from '../store/slices/authSlice';
+import { setCredentials } from '../store/authSlice';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
