@@ -5,38 +5,45 @@ import {
   Container,
   Typography,
   Paper,
-  Stack,
   TextField,
-  Divider,
   Alert,
   CircularProgress,
   Link,
 } from '@mui/material';
-import { TrendingUp, Security, Assessment, Notifications } from '@mui/icons-material';
+import { TrendingUp } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { authService } from '../services/authService';
 import { setCredentials } from '../store/slices/authSlice';
 
-const LoginPage: React.FC = () => {
+const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleKiteLogin = () => {
-    authService.initiateLogin();
-  };
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await authService.loginWithEmail(email, password);
+      const response = await authService.register(email, password, name || undefined);
       localStorage.setItem('token', response.token);
 
       const user = authService.decodeToken(response.token);
@@ -46,7 +53,7 @@ const LoginPage: React.FC = () => {
 
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -61,7 +68,7 @@ const LoginPage: React.FC = () => {
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       }}
     >
-      <Container maxWidth="md">
+      <Container maxWidth="sm">
         <Paper
           elevation={24}
           sx={{
@@ -74,13 +81,13 @@ const LoginPage: React.FC = () => {
           <Box sx={{ mb: 4 }}>
             <TrendingUp
               sx={{
-                fontSize: 64,
+                fontSize: 48,
                 color: 'primary.main',
-                mb: 2,
+                mb: 1,
               }}
             />
             <Typography
-              variant="h3"
+              variant="h4"
               component="h1"
               gutterBottom
               sx={{
@@ -90,35 +97,12 @@ const LoginPage: React.FC = () => {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              AlgoGainz
-            </Typography>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Smart Trading Assistant
+              Create Account
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Maximize your gains with intelligent technical analysis
+              Join AlgoGainz to start trading smarter
             </Typography>
           </Box>
-
-          {/* Features */}
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={3}
-            sx={{ mb: 4, justifyContent: 'center' }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Assessment color="primary" />
-              <Typography variant="body2">Technical Analysis</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Notifications color="primary" />
-              <Typography variant="body2">Smart Alerts</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Security color="primary" />
-              <Typography variant="body2">Secure Trading</Typography>
-            </Box>
-          </Stack>
 
           {/* Error Alert */}
           {error && (
@@ -127,8 +111,16 @@ const LoginPage: React.FC = () => {
             </Alert>
           )}
 
-          {/* Email/Password Login Form */}
-          <Box component="form" onSubmit={handleEmailLogin} sx={{ mb: 3 }}>
+          {/* Registration Form */}
+          <Box component="form" onSubmit={handleRegister}>
+            <TextField
+              fullWidth
+              label="Name (optional)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              margin="normal"
+              disabled={loading}
+            />
             <TextField
               fullWidth
               label="Email"
@@ -148,6 +140,17 @@ const LoginPage: React.FC = () => {
               margin="normal"
               required
               disabled={loading}
+              helperText="Must be at least 8 characters"
+            />
+            <TextField
+              fullWidth
+              label="Confirm Password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              margin="normal"
+              required
+              disabled={loading}
             />
             <Button
               type="submit"
@@ -156,73 +159,36 @@ const LoginPage: React.FC = () => {
               size="large"
               disabled={loading}
               sx={{
-                mt: 2,
+                mt: 3,
                 py: 1.5,
                 fontWeight: 600,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #764ba2 0%, #667eea 100%)',
+                },
               }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Sign In'}
+              {loading ? <CircularProgress size={24} /> : 'Create Account'}
             </Button>
           </Box>
 
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Don't have an account?{' '}
-            <Link href="/register" underline="hover">
-              Register here
+          <Typography variant="body2" sx={{ mt: 3 }}>
+            Already have an account?{' '}
+            <Link href="/login" underline="hover">
+              Sign in
             </Link>
           </Typography>
-
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              OR
-            </Typography>
-          </Divider>
-
-          {/* Zerodha Login Button */}
-          <Button
-            variant="outlined"
-            size="large"
-            onClick={handleKiteLogin}
-            sx={{
-              py: 1.5,
-              px: 5,
-              fontSize: '1.1rem',
-              fontWeight: 600,
-            }}
-          >
-            Connect to Zerodha Kite
-          </Button>
 
           {/* Info */}
           <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
             <Typography variant="caption" color="text.secondary" display="block">
-              Sign in with email or connect directly to Zerodha Kite
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-              AlgoGainz tracks only trades made through this app or manually recorded
-            </Typography>
-          </Box>
-
-          {/* Disclaimer */}
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="caption" color="warning.main" display="block">
-              This is not financial advice. Trade at your own risk.
+              After registration, you can link your Zerodha account for live trading
             </Typography>
           </Box>
         </Paper>
-
-        {/* Footer */}
-        <Typography
-          variant="body2"
-          color="white"
-          align="center"
-          sx={{ mt: 3, opacity: 0.8 }}
-        >
-          Powered by Zerodha Kite Connect API
-        </Typography>
       </Container>
     </Box>
   );
 };
 
-export default LoginPage;
+export default RegisterPage;

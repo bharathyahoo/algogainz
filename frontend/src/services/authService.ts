@@ -1,6 +1,17 @@
 import { apiService } from './api';
 import type { User } from '../types';
 
+interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    name?: string;
+    authProvider: string;
+    kiteConnected: boolean;
+  };
+}
+
 /**
  * Authentication Service
  * Handles all authentication-related API calls
@@ -27,12 +38,49 @@ export const authService = {
   },
 
   /**
+   * Register with email/password
+   */
+  async register(email: string, password: string, name?: string): Promise<AuthResponse> {
+    const response = await apiService.post<AuthResponse>('/auth/register', {
+      email,
+      password,
+      name,
+    });
+    if (!response.success || !response.data) {
+      throw new Error((response as any).error?.message || 'Registration failed');
+    }
+    return response.data;
+  },
+
+  /**
+   * Login with email/password
+   */
+  async loginWithEmail(email: string, password: string): Promise<AuthResponse> {
+    const response = await apiService.post<AuthResponse>('/auth/login/email', {
+      email,
+      password,
+    });
+    if (!response.success || !response.data) {
+      throw new Error((response as any).error?.message || 'Login failed');
+    }
+    return response.data;
+  },
+
+  /**
    * Initiate Kite login
    * This redirects to backend which then redirects to Kite
    */
   initiateLogin(): void {
     const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
     window.location.href = `${backendUrl}/auth/login`;
+  },
+
+  /**
+   * Link Zerodha account to existing user
+   */
+  linkZerodha(): void {
+    const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+    window.location.href = `${backendUrl}/auth/link-zerodha`;
   },
 
   /**
