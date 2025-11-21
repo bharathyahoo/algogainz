@@ -173,7 +173,7 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
  */
 router.get('/results', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId || (req as any).user.id;
     const { limit = 20, offset = 0, symbol, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
 
     const where: any = {
@@ -214,11 +214,13 @@ router.get('/results', authMiddleware, async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: results,
-      pagination: {
-        total: totalCount,
-        limit: parseInt(String(limit)),
-        offset: parseInt(String(offset)),
+      data: {
+        results,
+        pagination: {
+          total: totalCount,
+          limit: parseInt(String(limit)),
+          offset: parseInt(String(offset)),
+        },
       },
     });
   } catch (error) {
