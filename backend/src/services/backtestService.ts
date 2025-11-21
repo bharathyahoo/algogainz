@@ -188,6 +188,7 @@ class BacktestService {
     accessToken: string
   ): Promise<any[]> {
     try {
+      console.log(`[Backtest] Using accessToken: ${accessToken ? accessToken.substring(0, 10) + '...' : 'EMPTY'}`);
       const kite = createKiteService(accessToken);
 
       // Get all NSE instruments and find the matching symbol

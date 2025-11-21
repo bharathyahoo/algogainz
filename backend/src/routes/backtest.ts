@@ -24,8 +24,9 @@ const backtestLimiter = rateLimit({
  */
 router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const userId = (req as any).user.userId || (req as any).user.id;
     const kiteAccessToken = (req as any).user.kiteAccessToken;
+    console.log(`[Backtest Route] userId: ${userId}, token: ${kiteAccessToken ? kiteAccessToken.substring(0, 10) + '...' : 'EMPTY'}`);
     const {
       strategyName,
       stockSymbol,
