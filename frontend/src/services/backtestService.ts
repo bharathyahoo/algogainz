@@ -16,14 +16,14 @@ class BacktestService {
    */
   async runBacktest(config: BacktestConfig): Promise<BacktestResult> {
     try {
-      const response = await apiService.post<ApiResponse<BacktestResult>>(
+      const response = await apiService.post<BacktestResult>(
         '/backtest/run',
         config
       );
-      if (!response.data?.data) {
+      if (!response.data) {
         throw new Error('Invalid response from server');
       }
-      return response.data.data;
+      return response.data;
     } catch (error: any) {
       console.error('Failed to run backtest:', error);
       throw new Error(error.response?.data?.error?.message || 'Failed to run backtest');
