@@ -298,15 +298,23 @@ class WebSocketServer {
             console.log('[RealData] Instruments fetched, initializing Kite data...');
             await this.initializeKiteData(apiKey, user.accessToken);
 
-            const kiteClient = getKiteWebSocketClient();
-            const connected = kiteClient && kiteClient.isClientConnected();
+            // Wait for WebSocket connection (up to 5 seconds)
+            let connected = false;
+            for (let i = 0; i < 10; i++) {
+              const kiteClient = getKiteWebSocketClient();
+              connected = !!(kiteClient && kiteClient.isClientConnected());
+              if (connected) break;
+              console.log(`[RealData] Waiting for Kite WebSocket... (${i + 1}/10)`);
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
             console.log(`[RealData] Kite WebSocket connected: ${connected}`);
 
             if (connected) {
               this.setUseRealData(true);
               console.log('✅ Real data mode enabled for live prices');
             } else {
-              console.warn('⚠️ Kite WebSocket not connected, staying in mock mode');
+              console.warn('⚠️ Kite WebSocket not connected after timeout, staying in mock mode');
             }
           }
         } else {
