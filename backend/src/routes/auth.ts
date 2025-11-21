@@ -99,18 +99,24 @@ router.get('/callback', async (req: Request, res: Response) => {
       res.clearCookie('link_user_id');
     }
 
+    // Check if this Kite account is already linked to another user
+    const existingKiteUser = await prisma.user.findUnique({
+      where: { kiteUserId: user_id }
+    });
+
     // Create or update user in database
     // Priority: 1) Link user ID from cookie, 2) existing kiteUserId, 3) email match
     let user = linkUserId
       ? await prisma.user.findUnique({ where: { id: linkUserId } })
-      : await prisma.user.findFirst({
-          where: {
-            OR: [
-              { kiteUserId: user_id },
-              { email: email }
-            ]
-          }
+      : existingKiteUser || await prisma.user.findFirst({
+          where: { email: email }
         });
+
+    // If linking and kite account belongs to different user, handle conflict
+    if (linkUserId && existingKiteUser && existingKiteUser.id !== linkUserId) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}/auth/error?error=zerodha_already_linked&message=This Zerodha account is already linked to another user`);
+    }
 
     if (user) {
       // Update existing user with Kite credentials
