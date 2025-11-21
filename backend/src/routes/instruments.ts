@@ -35,44 +35,30 @@ router.get('/search', authMiddleware, async (req: AuthRequest, res: Response) =>
 
     const kite = createKiteService(kiteAccessToken);
 
-    // Get NSE instruments
+    // Get NSE instruments (returns parsed array)
     const instruments = await kite.getInstruments('NSE');
-
-    // Parse CSV data
-    const lines = instruments.trim().split('\n');
-    const headers = lines[0].split(',');
-
-    // Find relevant column indices
-    const instrumentTokenIdx = headers.indexOf('instrument_token');
-    const tradingsymbolIdx = headers.indexOf('tradingsymbol');
-    const nameIdx = headers.indexOf('name');
-    const exchangeIdx = headers.indexOf('exchange');
-    const instrumentTypeIdx = headers.indexOf('instrument_type');
 
     // Filter and map results
     const searchQuery = q.toLowerCase();
-    const results = lines.slice(1)
-      .map((line: string) => {
-        const cols = line.split(',');
-        return {
-          instrumentToken: cols[instrumentTokenIdx],
-          tradingsymbol: cols[tradingsymbolIdx],
-          name: cols[nameIdx],
-          exchange: cols[exchangeIdx],
-          instrumentType: cols[instrumentTypeIdx]
-        };
-      })
+    const results = instruments
       .filter((item: any) => {
         // Only show EQ (equity) instruments
-        if (item.instrumentType !== 'EQ') return false;
+        if (item.instrument_type !== 'EQ') return false;
 
         // Search by symbol or name
-        const symbol = item.tradingsymbol.toLowerCase();
-        const name = item.name.toLowerCase();
+        const symbol = (item.tradingsymbol || '').toLowerCase();
+        const name = (item.name || '').toLowerCase();
 
         return symbol.includes(searchQuery) || name.includes(searchQuery);
       })
-      .slice(0, 20); // Limit to 20 results
+      .slice(0, 20) // Limit to 20 results
+      .map((item: any) => ({
+        instrumentToken: item.instrument_token,
+        tradingsymbol: item.tradingsymbol,
+        name: item.name,
+        exchange: item.exchange,
+        instrumentType: item.instrument_type
+      }));
 
     res.json({
       success: true,
