@@ -98,6 +98,8 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
       kiteAccessToken
     );
 
+    console.log('[Backtest] Engine completed, saving to DB...');
+
     // Save result to database
     const savedResult = await prisma.backtestResult.create({
       data: {

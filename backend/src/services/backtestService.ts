@@ -137,6 +137,7 @@ class BacktestService {
       // 4. Calculate performance metrics
       console.log('Calculating performance metrics...');
       const metrics = this.calculateMetrics(trades, config.initialCapital, dataWithIndicators);
+      console.log(`[Backtest] Metrics calculated: ${trades.length} trades, ${metrics.winRate}% win rate`);
 
       // 5. Build equity curve
       const equityCurve = this.buildEquityCurve(trades, config.initialCapital);
