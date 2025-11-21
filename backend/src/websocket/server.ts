@@ -64,18 +64,25 @@ class WebSocketServer {
    * Start periodic price updates for subscribed symbols
    */
   private startPriceUpdates(): void {
-    // Update prices every 2 seconds
+    // Configurable interval via env variable (default 2000ms)
+    const interval = parseInt(process.env.PRICE_UPDATE_INTERVAL_MS || '2000', 10);
+
     this.priceUpdateInterval = setInterval(() => {
       this.fetchAndBroadcastPrices();
-    }, 2000);
+    }, interval);
 
-    console.log('📊 Price update service started (2s interval)');
+    console.log(`📊 Price update service started (${interval / 1000}s interval)`);
   }
 
   /**
    * Fetch prices and broadcast to subscribers
    */
   private async fetchAndBroadcastPrices(): Promise<void> {
+    // Skip mock updates if using real Kite data
+    if (this.useRealData) {
+      return;
+    }
+
     const symbols = Array.from(this.symbolSubscriptions.keys());
 
     if (symbols.length === 0) {
