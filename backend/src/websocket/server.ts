@@ -7,10 +7,13 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { corsOptions } from '../config/security';
 import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
 import { getCurrentMarketStatus } from '../utils/marketHours';
 import { alertService } from '../services/alertService';
 import { getKiteWebSocketClient, initializeKiteWebSocket } from './kiteWebSocket';
 import { instrumentService } from '../services/instrumentService';
+
+const prisma = new PrismaClient();
 
 interface ConnectedClient {
   userId: string;
@@ -235,7 +238,7 @@ class WebSocketServer {
   /**
    * Handle client authentication
    */
-  private handleAuthentication(socket: Socket, data: { userId: string; token: string }): void {
+  private async handleAuthentication(socket: Socket, data: { userId: string; token: string }): Promise<void> {
     // TODO: Validate JWT token
     const { userId, token } = data;
 
@@ -270,6 +273,34 @@ class WebSocketServer {
 
     console.log(`✅ Client authenticated: ${socket.id} (User: ${userId})`);
     console.log(`📊 Sent market status to ${socket.id}: ${currentMarketStatus.status}`);
+
+    // Initialize real data mode if enabled and not already initialized
+    if (process.env.USE_KITE_REAL_DATA === 'true' && !this.useRealData) {
+      try {
+        // Fetch user's Kite access token from database
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { accessToken: true }
+        });
+
+        if (user?.accessToken) {
+          const apiKey = process.env.KITE_API_KEY;
+          if (apiKey) {
+            console.log('🔧 Initializing Kite real data mode...');
+            await instrumentService.fetchInstruments(apiKey);
+            await this.initializeKiteData(apiKey, user.accessToken);
+
+            const kiteClient = getKiteWebSocketClient();
+            if (kiteClient && kiteClient.isClientConnected()) {
+              this.setUseRealData(true);
+              console.log('✅ Real data mode enabled for live prices');
+            }
+          }
+        }
+      } catch (error: any) {
+        console.warn('⚠️ Could not initialize real data mode:', error.message);
+      }
+    }
   }
 
   /**
