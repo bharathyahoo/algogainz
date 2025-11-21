@@ -25,6 +25,7 @@ const backtestLimiter = rateLimit({
 router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const kiteAccessToken = (req as any).user.kiteAccessToken;
     const {
       strategyName,
       stockSymbol,
@@ -92,7 +93,8 @@ router.post('/run', authMiddleware, ensureValidKiteToken, backtestLimiter, async
         entryConditions,
         exitConditions,
       },
-      userId
+      userId,
+      kiteAccessToken
     );
 
     // Save result to database

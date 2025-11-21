@@ -5,7 +5,7 @@
  */
 
 const technicalAnalysisService = require('./technicalAnalysisService');
-const kiteService = require('./kiteService');
+import { createKiteService } from './kiteService';
 
 /**
  * Strategy condition interface
@@ -102,7 +102,7 @@ class BacktestService {
   /**
    * Run a backtest for a given strategy
    */
-  async runBacktest(config: BacktestConfig, userId: string): Promise<BacktestResult> {
+  async runBacktest(config: BacktestConfig, userId: string, accessToken: string): Promise<BacktestResult> {
     const startTime = Date.now();
 
     try {
@@ -112,7 +112,7 @@ class BacktestService {
         config.stockSymbol,
         config.startDate,
         config.endDate,
-        userId
+        accessToken
       );
 
       if (!historicalData || historicalData.length === 0) {
@@ -185,22 +185,27 @@ class BacktestService {
     symbol: string,
     startDate: string,
     endDate: string,
-    userId: string
+    accessToken: string
   ): Promise<any[]> {
     try {
-      // Get instrument token
-      const instrument = await kiteService.searchInstrument(symbol, userId);
+      const kite = createKiteService(accessToken);
+
+      // Get all NSE instruments and find the matching symbol
+      const instruments = await kite.getInstruments('NSE');
+      const instrument = instruments.find(
+        (inst: any) => inst.tradingsymbol === symbol.toUpperCase()
+      );
+
       if (!instrument) {
         throw new Error(`Instrument not found: ${symbol}`);
       }
 
       // Fetch historical data (daily candles)
-      const data = await kiteService.getHistoricalData(
-        instrument.instrument_token,
+      const data = await kite.getHistoricalData(
+        instrument.instrument_token.toString(),
         'day',
         startDate,
-        endDate,
-        userId
+        endDate
       );
 
       return data;
